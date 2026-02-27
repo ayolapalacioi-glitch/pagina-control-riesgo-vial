@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seguridad Vial Inteligente - Visión Cero</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/tailwind.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>🚸 Seguridad Vial Inteligente - Sistema Seguro</h1>
+    <p class="banner" id="ansvMessage">La vida del peatón es sagrada. Respeta la cebra, salva vidas.</p>
+
+    <div class="grid grid-4">
+      <div class="card"><div class="kpi-label">Peatones</div><div class="kpi-value" id="kpiPeaton">0</div></div>
+      <div class="card"><div class="kpi-label">Motocicletas</div><div class="kpi-value" id="kpiMoto">0</div></div>
+      <div class="card"><div class="kpi-label">Automóviles</div><div class="kpi-value" id="kpiAuto">0</div></div>
+      <div class="card"><div class="kpi-label">Buses BRT</div><div class="kpi-value" id="kpiBus">0</div></div>
+    </div>
+
+    <div class="row" style="margin-top: 12px;">
+      <div class="card">
+        <h3>Mapa Demográfico y Riesgo</h3>
+        <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap: wrap;">
+          <button id="btnSimulate">Simular múltiples cámaras</button>
+          <button id="btnOfflineMode">Modo Demo Offline</button>
+          <button id="btnStartCamera">Abrir cámara PC (IA)</button>
+          <button id="btnStopCamera">Detener cámara</button>
+          <button id="btnSimQR">Simular QR (R)</button>
+          <button id="btnCameraReport">Reporte detecciones cámara</button>
+          <button id="btnCsv">Exportar CSV</button>
+          <button id="btnPdf">Reporte PDF Diario</button>
+        </div>
+        <div class="camera-wrap" style="margin-bottom:10px;">
+          <video id="cameraVideo" autoplay muted playsinline></video>
+          <canvas id="cameraCanvas"></canvas>
+        </div>
+        <div id="cameraStatus" style="margin-bottom:10px; color: var(--muted);">Cámara apagada.</div>
+        <div id="visionRtStatus" style="margin-bottom:10px; color: var(--muted);">Motor de visión: iniciando...</div>
+        <div class="card" style="margin-bottom:10px; padding:10px;">
+          <h4 style="margin:0 0 8px 0;">Telemetría de Visión en Vivo</h4>
+          <div class="metrics-mini" style="margin-bottom:8px;">
+            <div class="metric-mini"><div class="label">Motor</div><div id="liveEngine" class="value">-</div></div>
+            <div class="metric-mini"><div class="label">Riesgo</div><div id="liveRisk" class="value">-</div></div>
+            <div class="metric-mini"><div class="label">Objetos</div><div id="liveObjCount" class="value">0</div></div>
+            <div class="metric-mini"><div class="label">TTC</div><div id="liveTTC" class="value">-</div></div>
+            <div class="metric-mini"><div class="label">PET</div><div id="livePET" class="value">-</div></div>
+            <div class="metric-mini"><div class="label">vRel</div><div id="liveVRel" class="value">-</div></div>
+          </div>
+          <div style="font-size:0.82rem; color: var(--muted); margin-bottom:6px;">Eventos rápidos</div>
+          <div id="liveBadges" class="badges-wrap"></div>
+        </div>
+        <div id="map"></div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>Nivel de Riesgo Actual</h3>
+          <div id="riskPill" class="risk-pill risk-bajo">🟢 BAJO</div>
+          <div id="riskDetails" style="margin-top:8px; color: var(--muted);">Sin eventos críticos recientes.</div>
+        </div>
+        <div class="card">
+          <h3>Tendencia por Hora</h3>
+          <canvas id="hourlyChart" height="180"></canvas>
+        </div>
+        <div class="card">
+          <h3>Tipos Vehiculares</h3>
+          <canvas id="vehicleChart" height="180"></canvas>
+          <div class="table-wrap" style="margin-top:10px; max-height:220px;">
+            <table class="table" id="vehicleTable">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th class="num">Activos</th>
+                  <th class="num">%</th>
+                </tr>
+              </thead>
+              <tbody id="vehicleTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Eventos Recientes</h3>
+          <div id="eventList" class="list"></div>
+        </div>
+        <div class="card">
+          <h3>Modelos SenseCraft (conteo)</h3>
+          <div id="modelCounts" class="list"></div>
+        </div>
+        <div class="card">
+          <h3>Objetos en seguimiento</h3>
+          <div id="objectsLiveList" class="list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose@0.0.7"></script>
+  <script src="js/frame-schema.js"></script>
+  <script src="js/map-adapter.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

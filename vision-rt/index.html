@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visión RT - Seguridad Vial</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header>
+      <div><strong>Visión + Tracking + Riesgo en tiempo real</strong></div>
+      <div id="banner">Iniciando motor de visión...</div>
+    </header>
+
+    <main class="layout">
+      <section class="video-card">
+        <div class="video-wrap">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="overlay"></canvas>
+        </div>
+        <div class="controls">
+          <button id="btnStart">Iniciar cámara</button>
+          <button id="btnSimQR">Simular QR (R)</button>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <h3>Eventos</h3>
+        <div id="badges" class="badges"></div>
+
+        <h3>Estado actual</h3>
+        <div class="metrics">
+          <div class="metric"><div class="k">Riesgo</div><div id="mRisk" class="v">-</div></div>
+          <div class="metric"><div class="k">TTC</div><div id="mTtc" class="v">-</div></div>
+          <div class="metric"><div class="k">PET</div><div id="mPet" class="v">-</div></div>
+          <div class="metric"><div class="k">vRel</div><div id="mVrel" class="v">-</div></div>
+        </div>
+
+        <h3>Objetos detectados</h3>
+        <div id="objectsList" class="list"></div>
+      </aside>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose@0.0.7"></script>
+
+    <script src="./frame-schema.js"></script>
+    <script src="./map-adapter.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

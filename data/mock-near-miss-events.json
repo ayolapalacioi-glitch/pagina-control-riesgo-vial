@@ -1,0 +1,803 @@
+{
+  "nearMissEvents": [
+    {
+      "event_id": "cam-001-1739999990000-a-303-p-101",
+      "camera_id": "cam-001-cartagena-centro",
+      "timestamp": "2026-02-24T15:40:00.250Z",
+      "gps": {
+        "lat": 10.4236,
+        "lng": -75.5457
+      },
+      "risk_level": "CRITICO",
+      "ttc_seconds": 1.8,
+      "pet_seconds": 1.1,
+      "vehicle": {
+        "trackId": "a-303",
+        "className": "automovil",
+        "center": {
+          "x": 640,
+          "y": 530
+        },
+        "velocityPxPerSec": {
+          "x": 115,
+          "y": -12
+        },
+        "speedKmh": 36.4,
+        "headingToCrosswalk": true,
+        "inCrosswalk": false,
+        "predictedPath": [
+          {
+            "x": 755,
+            "y": 518,
+            "t": 1
+          },
+          {
+            "x": 870,
+            "y": 506,
+            "t": 2
+          }
+        ]
+      },
+      "pedestrian": {
+        "trackId": "p-101",
+        "className": "peaton",
+        "center": {
+          "x": 710,
+          "y": 510
+        },
+        "velocityPxPerSec": {
+          "x": 10,
+          "y": 6
+        },
+        "speedKmh": 3.4,
+        "headingToCrosswalk": true,
+        "inCrosswalk": true,
+        "predictedPath": [
+          {
+            "x": 720,
+            "y": 516,
+            "t": 1
+          },
+          {
+            "x": 730,
+            "y": 522,
+            "t": 2
+          }
+        ]
+      },
+      "factors": [
+        "Peatón en zona de cebra",
+        "Vehículo con trayectoria hacia cebra",
+        "Velocidad vehicular alta (36.4 km/h)",
+        "TTC crítico (1.80 s)",
+        "PET crítico (1.10 s)",
+        "Predicción de conflicto entre 1-5 segundos"
+      ],
+      "recommended_action": "Activar alerta visual/sonora inmediata y priorizar paso peatonal.",
+      "source": "mock"
+    },
+    {
+      "event_id": "cam-001-cartagena-centro-1771968294752-m-202-p-101",
+      "camera_id": "cam-001-cartagena-centro",
+      "timestamp": "2026-02-24T15:40:00.250Z",
+      "gps": {
+        "lat": 10.4236,
+        "lng": -75.5457
+      },
+      "risk_level": "CRITICO",
+      "ttc_seconds": 2.023655044359609,
+      "pet_seconds": 2.661489723631741,
+      "vehicle": {
+        "trackId": "m-202",
+        "className": "motocicleta",
+        "center": {
+          "x": 610,
+          "y": 505
+        },
+        "velocityPxPerSec": {
+          "x": 72,
+          "y": -6
+        },
+        "speedKmh": 20.807875432153082,
+        "headingToCrosswalk": true,
+        "inCrosswalk": true,
+        "predictedPath": [
+          {
+            "x": 682,
+            "y": 499,
+            "t": 1
+          },
+          {
+            "x": 754,
+            "y": 493,
+            "t": 2
+          },
+          {
+            "x": 826,
+            "y": 487,
+            "t": 3
+          },
+          {
+            "x": 898,
+            "y": 481,
+            "t": 4
+          },
+          {
+            "x": 970,
+            "y": 475,
+            "t": 5
+          }
+        ]
+      },
+      "pedestrian": {
+        "trackId": "p-101",
+        "className": "peaton",
+        "center": {
+          "x": 710,
+          "y": 510
+        },
+        "velocityPxPerSec": {
+          "x": 24,
+          "y": 6
+        },
+        "speedKmh": 7.124726521067317,
+        "headingToCrosswalk": false,
+        "inCrosswalk": true,
+        "predictedPath": [
+          {
+            "x": 734,
+            "y": 516,
+            "t": 1
+          },
+          {
+            "x": 758,
+            "y": 522,
+            "t": 2
+          },
+          {
+            "x": 782,
+            "y": 528,
+            "t": 3
+          },
+          {
+            "x": 806,
+            "y": 534,
+            "t": 4
+          },
+          {
+            "x": 830,
+            "y": 540,
+            "t": 5
+          }
+        ]
+      },
+      "factors": [
+        "Peatón en zona de cebra",
+        "Vehículo con trayectoria hacia cebra",
+        "TTC crítico (2.02 s)",
+        "PET bajo (2.66 s)"
+      ],
+      "recommended_action": "Activar alerta visual/sonora inmediata y priorizar paso peatonal.",
+      "source": "mock"
+    },
+    {
+      "event_id": "cam-001-cartagena-centro-1771985301021-m-202-p-101",
+      "camera_id": "cam-001-cartagena-centro",
+      "timestamp": "2026-02-24T15:40:00.250Z",
+      "gps": {
+        "lat": 10.4236,
+        "lng": -75.5457
+      },
+      "risk_level": "CRITICO",
+      "ttc_seconds": 2.023655044359609,
+      "pet_seconds": 2.661489723631741,
+      "vehicle": {
+        "trackId": "m-202",
+        "className": "motocicleta",
+        "center": {
+          "x": 610,
+          "y": 505
+        },
+        "velocityPxPerSec": {
+          "x": 72,
+          "y": -6
+        },
+        "speedKmh": 20.807875432153082,
+        "headingToCrosswalk": true,
+        "inCrosswalk": true,
+        "predictedPath": [
+          {
+            "x": 682,
+            "y": 499,
+            "t": 1
+          },
+          {
+            "x": 754,
+            "y": 493,
+            "t": 2
+          },
+          {
+            "x": 826,
+            "y": 487,
+            "t": 3
+          },
+          {
+            "x": 898,
+            "y": 481,
+            "t": 4
+          },
+          {
+            "x": 970,
+            "y": 475,
+            "t": 5
+          }
+        ]
+      },
+      "pedestrian": {
+        "trackId": "p-101",
+        "className": "peaton",
+        "center": {
+          "x": 710,
+          "y": 510
+        },
+        "velocityPxPerSec": {
+          "x": 24,
+          "y": 6
+        },
+        "speedKmh": 7.124726521067317,
+        "headingToCrosswalk": false,
+        "inCrosswalk": true,
+        "predictedPath": [
+          {
+            "x": 734,
+            "y": 516,
+            "t": 1
+          },
+          {
+            "x": 758,
+            "y": 522,
+            "t": 2
+          },
+          {
+            "x": 782,
+            "y": 528,
+            "t": 3
+          },
+          {
+            "x": 806,
+            "y": 534,
+            "t": 4
+          },
+          {
+            "x": 830,
+            "y": 540,
+            "t": 5
+          }
+        ]
+      },
+      "factors": [
+        "Peatón en zona de cebra",
+        "Vehículo con trayectoria hacia cebra",
+        "TTC crítico (2.02 s)",
+        "PET bajo (2.66 s)"
+      ],
+      "recommended_action": "Activar alerta visual/sonora inmediata y priorizar paso peatonal.",
+      "source": "mock"
+    },
+    {
+      "event_id": "cam-pc-live-001-1772230666440-T0028-T0023",
+      "camera_id": "cam-pc-live-001",
+      "timestamp": "2026-02-27T22:17:46.390Z",
+      "gps": {
+        "lat": 10.407172295061297,
+        "lng": -75.50165508761756
+      },
+      "risk_level": "ALTO",
+      "ttc_seconds": 1.3946508169512544,
+      "pet_seconds": 5.652729657710996,
+      "vehicle": {
+        "trackId": "T0028",
+        "className": "automovil",
+        "center": {
+          "x": 1046.7780851290518,
+          "y": 403.76696219863624
+        },
+        "velocityPxPerSec": {
+          "x": 3.042167577325131,
+          "y": -9.222999018223256
+        },
+        "speedKmh": 2.796990025792079,
+        "headingToCrosswalk": false,
+        "inCrosswalk": false,
+        "predictedPath": [
+          {
+            "x": 1049.8202527063768,
+            "y": 394.54396318041296,
+            "t": 1
+          },
+          {
+            "x": 1052.862420283702,
+            "y": 385.32096416218974,
+            "t": 2
+          },
+          {
+            "x": 1055.9045878610273,
+            "y": 376.09796514396646,
+            "t": 3
+          },
+          {
+            "x": 1058.9467554383523,
+            "y": 366.8749661257432,
+            "t": 4
+          },
+          {
+            "x": 1061.9889230156773,
+            "y": 357.65196710751997,
+            "t": 5
+          }
+        ]
+      },
+      "pedestrian": {
+        "trackId": "T0023",
+        "className": "peaton",
+        "center": {
+          "x": 1055.023109835194,
+          "y": 389.88524232311846
+        },
+        "velocityPxPerSec": {
+          "x": 0.6600589434056783,
+          "y": 2.106126454693637
+        },
+        "speedKmh": 0.635654980715875,
+        "headingToCrosswalk": false,
+        "inCrosswalk": false,
+        "predictedPath": [
+          {
+            "x": 1055.6831687785996,
+            "y": 391.9913687778121,
+            "t": 1
+          },
+          {
+            "x": 1056.3432277220054,
+            "y": 394.0974952325057,
+            "t": 2
+          },
+          {
+            "x": 1057.003286665411,
+            "y": 396.20362168719936,
+            "t": 3
+          },
+          {
+            "x": 1057.6633456088166,
+            "y": 398.309748141893,
+            "t": 4
+          },
+          {
+            "x": 1058.3234045522224,
+            "y": 400.41587459658666,
+            "t": 5
+          }
+        ]
+      },
+      "factors": [
+        "TTC crítico (1.39 s)",
+        "Predicción de conflicto entre 1-5 segundos"
+      ],
+      "recommended_action": "Advertencia preventiva a conductores y monitoreo en tiempo real.",
+      "source": "http"
+    },
+    {
+      "event_id": "cam-pc-live-001-1772230814691-T0094-T0068",
+      "camera_id": "cam-pc-live-001",
+      "timestamp": "2026-02-27T22:20:14.644Z",
+      "gps": {
+        "lat": 10.407172295061297,
+        "lng": -75.50165508761756
+      },
+      "risk_level": "CRITICO",
+      "ttc_seconds": 1.1194571921773309,
+      "pet_seconds": 0.8706482634536967,
+      "vehicle": {
+        "trackId": "T0094",
+        "className": "automovil",
+        "center": {
+          "x": 999.9930302780431,
+          "y": 491.9725512321049
+        },
+        "velocityPxPerSec": {
+          "x": -30.56109846413625,
+          "y": 0.5446593622963988
+        },
+        "speedKmh": 8.802994041682378,
+        "headingToCrosswalk": true,
+        "inCrosswalk": false,
+        "predictedPath": [
+          {
+            "x": 969.4319318139069,
+            "y": 492.51721059440126,
+            "t": 1
+          },
+          {
+            "x": 938.8708333497706,
+            "y": 493.06186995669765,
+            "t": 2
+          },
+          {
+            "x": 908.3097348856343,
+            "y": 493.6065293189941,
+            "t": 3
+          },
+          {
+            "x": 877.7486364214981,
+            "y": 494.1511886812905,
+            "t": 4
+          },
+          {
+            "x": 847.1875379573619,
+            "y": 494.69584804358686,
+            "t": 5
+          }
+        ]
+      },
+      "pedestrian": {
+        "trackId": "T0068",
+        "className": "peaton",
+        "center": {
+          "x": 943.5376914822732,
+          "y": 481.112863452144
+        },
+        "velocityPxPerSec": {
+          "x": 20.666845857116876,
+          "y": -3.0732654020703096
+        },
+        "speedKmh": 6.017501234902102,
+        "headingToCrosswalk": false,
+        "inCrosswalk": false,
+        "predictedPath": [
+          {
+            "x": 964.2045373393901,
+            "y": 478.03959805007366,
+            "t": 1
+          },
+          {
+            "x": 984.8713831965069,
+            "y": 474.96633264800334,
+            "t": 2
+          },
+          {
+            "x": 1005.5382290536238,
+            "y": 471.893067245933,
+            "t": 3
+          },
+          {
+            "x": 1026.2050749107407,
+            "y": 468.81980184386276,
+            "t": 4
+          },
+          {
+            "x": 1046.8719207678575,
+            "y": 465.74653644179244,
+            "t": 5
+          }
+        ]
+      },
+      "factors": [
+        "Vehículo con trayectoria hacia cebra",
+        "TTC crítico (1.12 s)",
+        "PET crítico (0.87 s)",
+        "Predicción de conflicto entre 1-5 segundos"
+      ],
+      "recommended_action": "Activar alerta visual/sonora inmediata y priorizar paso peatonal.",
+      "source": "http"
+    },
+    {
+      "event_id": "cam-pc-live-001-1772230818457-T0096-T0068",
+      "camera_id": "cam-pc-live-001",
+      "timestamp": "2026-02-27T22:20:18.407Z",
+      "gps": {
+        "lat": 10.407172295061297,
+        "lng": -75.50165508761756
+      },
+      "risk_level": "ALTO",
+      "ttc_seconds": 1.1683351357214609,
+      "pet_seconds": 2.1788094884194633,
+      "vehicle": {
+        "trackId": "T0096",
+        "className": "automovil",
+        "center": {
+          "x": 986.1774760177851,
+          "y": 489.2468445048272
+        },
+        "velocityPxPerSec": {
+          "x": -11.534656744621666,
+          "y": -6.014646954961219
+        },
+        "speedKmh": 3.746483555207087,
+        "headingToCrosswalk": true,
+        "inCrosswalk": false,
+        "predictedPath": [
+          {
+            "x": 974.6428192731635,
+            "y": 483.232197549866,
+            "t": 1
+          },
+          {
+            "x": 963.1081625285418,
+            "y": 477.21755059490476,
+            "t": 2
+          },
+          {
+            "x": 951.5735057839202,
+            "y": 471.20290363994354,
+            "t": 3
+          },
+          {
+            "x": 940.0388490392985,
+            "y": 465.1882566849823,
+            "t": 4
+          },
+          {
+            "x": 928.5041922946768,
+            "y": 459.1736097300211,
+            "t": 5
+          }
+        ]
+      },
+      "pedestrian": {
+        "trackId": "T0068",
+        "className": "peaton",
+        "center": {
+          "x": 984.3753633824037,
+          "y": 539.076731796893
+        },
+        "velocityPxPerSec": {
+          "x": 29.769466606612003,
+          "y": 4.727784401237008
+        },
+        "speedKmh": 8.681053286336171,
+        "headingToCrosswalk": false,
+        "inCrosswalk": false,
+        "predictedPath": [
+          {
+            "x": 1014.1448299890158,
+            "y": 543.80451619813,
+            "t": 1
+          },
+          {
+            "x": 1043.9142965956278,
+            "y": 548.532300599367,
+            "t": 2
+          },
+          {
+            "x": 1073.6837632022398,
+            "y": 553.260085000604,
+            "t": 3
+          },
+          {
+            "x": 1103.4532298088518,
+            "y": 557.9878694018411,
+            "t": 4
+          },
+          {
+            "x": 1133.2226964154638,
+            "y": 562.715653803078,
+            "t": 5
+          }
+        ]
+      },
+      "factors": [
+        "Vehículo con trayectoria hacia cebra",
+        "TTC crítico (1.17 s)",
+        "PET bajo (2.18 s)"
+      ],
+      "recommended_action": "Advertencia preventiva a conductores y monitoreo en tiempo real.",
+      "source": "http"
+    },
+    {
+      "event_id": "cam-pc-live-001-1772230861516-T0109-T0107",
+      "camera_id": "cam-pc-live-001",
+      "timestamp": "2026-02-27T22:21:01.466Z",
+      "gps": {
+        "lat": 10.407172295061297,
+        "lng": -75.50165508761756
+      },
+      "risk_level": "ALTO",
+      "ttc_seconds": 3.5214946428637854,
+      "pet_seconds": 4.217727689626562,
+      "vehicle": {
+        "trackId": "T0109",
+        "className": "automovil",
+        "center": {
+          "x": 575.0095023956076,
+          "y": 353.0379799825048
+        },
+        "velocityPxPerSec": {
+          "x": 21.68750454209535,
+          "y": 3.938709441850614
+        },
+        "speedKmh": 6.348171268205675,
+        "headingToCrosswalk": true,
+        "inCrosswalk": false,
+        "predictedPath": [
+          {
+            "x": 596.6970069377029,
+            "y": 356.9766894243554,
+            "t": 1
+          },
+          {
+            "x": 618.3845114797982,
+            "y": 360.91539886620603,
+            "t": 2
+          },
+          {
+            "x": 640.0720160218937,
+            "y": 364.85410830805665,
+            "t": 3
+          },
+          {
+            "x": 661.759520563989,
+            "y": 368.7928177499073,
+            "t": 4
+          },
+          {
+            "x": 683.4470251060843,
+            "y": 372.7315271917579,
+            "t": 5
+          }
+        ]
+      },
+      "pedestrian": {
+        "trackId": "T0107",
+        "className": "peaton",
+        "center": {
+          "x": 709.5817347087238,
+          "y": 404.66627099162065
+        },
+        "velocityPxPerSec": {
+          "x": 62.016571705869836,
+          "y": -3.0511446056543376
+        },
+        "speedKmh": 17.88237583467587,
+        "headingToCrosswalk": false,
+        "inCrosswalk": true,
+        "predictedPath": [
+          {
+            "x": 771.5983064145937,
+            "y": 401.61512638596633,
+            "t": 1
+          },
+          {
+            "x": 833.6148781204636,
+            "y": 398.56398178031196,
+            "t": 2
+          },
+          {
+            "x": 895.6314498263333,
+            "y": 395.51283717465765,
+            "t": 3
+          },
+          {
+            "x": 957.6480215322032,
+            "y": 392.4616925690033,
+            "t": 4
+          },
+          {
+            "x": 1019.664593238073,
+            "y": 389.41054796334896,
+            "t": 5
+          }
+        ]
+      },
+      "factors": [
+        "Peatón en zona de cebra",
+        "Vehículo con trayectoria hacia cebra",
+        "TTC preventivo (3.52 s)"
+      ],
+      "recommended_action": "Advertencia preventiva a conductores y monitoreo en tiempo real.",
+      "source": "http"
+    },
+    {
+      "event_id": "cam-pc-live-001-1772230866459-T0107-T0109",
+      "camera_id": "cam-pc-live-001",
+      "timestamp": "2026-02-27T22:21:06.412Z",
+      "gps": {
+        "lat": 10.407172295061297,
+        "lng": -75.50165508761756
+      },
+      "risk_level": "ALTO",
+      "ttc_seconds": 3.0273890361338025,
+      "pet_seconds": 8.325131197731498,
+      "vehicle": {
+        "trackId": "T0107",
+        "className": "automovil",
+        "center": {
+          "x": 684.6656594380132,
+          "y": 453.5495692254891
+        },
+        "velocityPxPerSec": {
+          "x": 5.084038795458824,
+          "y": 5.328986060898609
+        },
+        "speedKmh": 2.121165319160319,
+        "headingToCrosswalk": true,
+        "inCrosswalk": true,
+        "predictedPath": [
+          {
+            "x": 689.749698233472,
+            "y": 458.8785552863877,
+            "t": 1
+          },
+          {
+            "x": 694.8337370289308,
+            "y": 464.20754134728634,
+            "t": 2
+          },
+          {
+            "x": 699.9177758243897,
+            "y": 469.53652740818495,
+            "t": 3
+          },
+          {
+            "x": 705.0018146198486,
+            "y": 474.86551346908357,
+            "t": 4
+          },
+          {
+            "x": 710.0858534153074,
+            "y": 480.1944995299822,
+            "t": 5
+          }
+        ]
+      },
+      "pedestrian": {
+        "trackId": "T0109",
+        "className": "peaton",
+        "center": {
+          "x": 745.763600005925,
+          "y": 401.93941448377376
+        },
+        "velocityPxPerSec": {
+          "x": 31.409331447027007,
+          "y": 3.1138825099541427
+        },
+        "speedKmh": 9.090232495651346,
+        "headingToCrosswalk": false,
+        "inCrosswalk": true,
+        "predictedPath": [
+          {
+            "x": 777.1729314529521,
+            "y": 405.0532969937279,
+            "t": 1
+          },
+          {
+            "x": 808.582262899979,
+            "y": 408.16717950368206,
+            "t": 2
+          },
+          {
+            "x": 839.9915943470061,
+            "y": 411.2810620136362,
+            "t": 3
+          },
+          {
+            "x": 871.400925794033,
+            "y": 414.3949445235903,
+            "t": 4
+          },
+          {
+            "x": 902.8102572410601,
+            "y": 417.5088270335445,
+            "t": 5
+          }
+        ]
+      },
+      "factors": [
+        "Peatón en zona de cebra",
+        "Vehículo con trayectoria hacia cebra",
+        "TTC preventivo (3.03 s)"
+      ],
+      "recommended_action": "Advertencia preventiva a conductores y monitoreo en tiempo real.",
+      "source": "http"
+    }
+  ]
+}

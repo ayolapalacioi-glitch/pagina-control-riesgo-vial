@@ -1,0 +1,33 @@
+{
+  "name": "seguridad-vial-backend",
+  "version": "1.0.0",
+  "description": "Backend edge-to-cloud para seguridad vial peatonal (Sistema Seguro / Vision Cero)",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "seed": "tsx src/utils/generateMockData.ts",
+    "lint": "echo 'Configura ESLint si deseas reglas avanzadas'"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.8",
+    "cors": "^2.8.5",
+    "csv-stringify": "^6.5.2",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
+    "lowdb": "^7.0.1",
+    "mqtt": "^5.10.4",
+    "pdfkit": "^0.17.1",
+    "socket.io": "^4.8.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.10",
+    "@types/pdfkit": "^0.17.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
