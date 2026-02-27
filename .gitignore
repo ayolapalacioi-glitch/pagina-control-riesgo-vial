@@ -1,0 +1,7 @@
+﻿node_modules/
+**/node_modules/
+backend/dist/
+vision-rt/node_modules/
+*.log
+.env
+backend/.env
