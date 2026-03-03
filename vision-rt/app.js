@@ -1,7 +1,9 @@
 (() => {
   const DETECTION_ENGINE = 'sensecraft';
   const CAMERA_ID = 'cam-001';
-  const MODEL_TIMEOUT_MS = 15000;
+  const MODEL_TIMEOUT_MS = 20000;
+  const MIN_DETECTION_CONFIDENCE = 0.42;
+  const MIN_BBOX_AREA_PX = 900; // 30x30 minimum — ignore dust detections
 
   const CLASS_COLORS = {
     peatón: '#40d98c',
@@ -11,8 +13,7 @@
     bicicleta: '#4fb5ff',
     'señal de paso': '#e6e6e6',
     animal: '#bf8bff',
-    ambulancia: '#7de3ff',
-    gesto: '#ff6bd5'
+    ambulancia: '#7de3ff'
   };
 
   const ANIMAL_CLASSES = new Set(['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe']);
@@ -26,7 +27,7 @@
     stop_sign: 'señal de paso'
   };
 
-  const SPECIAL_EVENTS = new Set(['autobús', 'bicicleta', 'señal de paso', 'animal', 'ambulancia', 'gesto']);
+  const SPECIAL_EVENTS = new Set(['autobús', 'bicicleta', 'señal de paso', 'animal', 'ambulancia']);
 
   const ui = {
     banner: document.getElementById('banner'),
@@ -34,6 +35,11 @@
     overlay: document.getElementById('overlay'),
     btnStart: document.getElementById('btnStart'),
     btnSimQR: document.getElementById('btnSimQR'),
+    btnScanQR: document.getElementById('btnScanQR'),
+    btnDrawZone: document.getElementById('btnDrawZone'),
+    btnClearZones: document.getElementById('btnClearZones'),
+    geofenceStatus: document.getElementById('geofenceStatus'),
+    zoneList: document.getElementById('zoneList'),
     badges: document.getElementById('badges'),
     objectsList: document.getElementById('objectsList'),
     mRisk: document.getElementById('mRisk'),
@@ -55,8 +61,9 @@
   });
 
   let detector = null;
-  let handModel = null;
+  let geofence = null;
   let isRunning = false;
+  let qrScanActive = false;
   let tracks = [];
   let nextTrackId = 1;
   let frameClock = 0;
@@ -197,8 +204,7 @@
       motocicleta: { sx: 0.86, sy: 0.84, yBias: 0.03 },
       bicicleta: { sx: 0.88, sy: 0.86, yBias: 0.03 },
       animal: { sx: 0.9, sy: 0.88, yBias: 0.02 },
-      ambulancia: { sx: 0.92, sy: 0.8, yBias: 0.04 },
-      gesto: { sx: 1, sy: 1, yBias: 0 }
+      ambulancia: { sx: 0.92, sy: 0.8, yBias: 0.04 }
     };
 
     const p = profiles[classType] || { sx: 0.9, sy: 0.9, yBias: 0 };
@@ -256,8 +262,8 @@
     }
 
     async init() {
-      if (typeof window.tf === 'undefined' || typeof window.handpose === 'undefined') {
-        throw new Error('Brave o el navegador bloquearon scripts del modelo. Verifica Shields/extensiones.');
+      if (typeof window.tf === 'undefined') {
+        throw new Error('TensorFlow.js no disponible. Verifica conexión a internet o extensiones del navegador.');
       }
 
       if (this.engine === 'sensecraft') {
@@ -278,11 +284,12 @@
       }
 
       if (typeof window.cocoSsd === 'undefined') {
-        throw new Error('Brave o el navegador bloquearon coco-ssd. Desactiva Shields para localhost.');
+        throw new Error('Modelo coco-ssd no disponible. Desactiva bloqueadores de scripts para localhost.');
       }
 
-      this.detector = await window.cocoSsd.load({ base: 'lite_mobilenet_v2' });
-      setBanner('motor SenseCraft no disponible: modo compat coco-ssd');
+      // Use mobilenet_v2 (full model) for significantly better person & vehicle detection accuracy
+      this.detector = await window.cocoSsd.load({ base: 'mobilenet_v2' });
+      setBanner('Motor de detección listo (mobilenet_v2)');
     }
 
     async detect(videoElement) {
@@ -311,11 +318,13 @@
         .map((entry) => {
           const className = entry.class || entry.class_name || entry.label || entry.category || entry.name;
           const score = entry.score ?? entry.confidence ?? entry.probability ?? 0;
+          if (score < MIN_DETECTION_CONFIDENCE) return null;
           const bbox = entry.bbox || entry.box || entry.rect;
           if (!bbox) {
             return null;
           }
           const packed = toVideoPixelBbox(bbox, ui.video.videoWidth || 1, ui.video.videoHeight || 1);
+          if (packed.w * packed.h < MIN_BBOX_AREA_PX) return null;
           return {
             class: className,
             score,
@@ -598,31 +607,6 @@
     return redRatio > 0.08 && whiteRatio > 0.12;
   }
 
-  async function detectHands(transform) {
-    if (!handModel) {
-      return [];
-    }
-
-    const hands = await handModel.estimateHands(ui.video, true);
-    return hands.map((hand, idx) => {
-      const xs = hand.landmarks.map((p) => p[0]);
-      const ys = hand.landmarks.map((p) => p[1]);
-      const videoBox = {
-        x: Math.min(...xs),
-        y: Math.min(...ys),
-        w: Math.max(...xs) - Math.min(...xs),
-        h: Math.max(...ys) - Math.min(...ys)
-      };
-      const canvasBox = clampBboxToCanvas(videoBboxToCanvasBbox(videoBox, transform));
-      return {
-        classType: 'gesto',
-        score: 0.9,
-        bbox: canvasBox,
-        sourceId: `hand-${idx}`
-      };
-    });
-  }
-
   function emitSocketPayload(metrics) {
     const timestamp = new Date().toISOString();
     const canvasSize = { width: ui.overlay.width, height: ui.overlay.height };
@@ -650,6 +634,46 @@
     });
 
     socket.emit('objects_update', objectsEnvelope);
+  }
+
+  function scanQrFrame() {
+    if (!qrScanActive || !ui.video.videoWidth) return;
+    const sw = Math.min(ui.video.videoWidth, 640);
+    const sh = Math.round(sw * (ui.video.videoHeight / ui.video.videoWidth));
+    cropCanvas.width = sw;
+    cropCanvas.height = sh;
+    cropCtx.drawImage(ui.video, 0, 0, sw, sh);
+    const imageData = cropCtx.getImageData(0, 0, sw, sh);
+    if (typeof window.jsQR === 'function') {
+      const code = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+      if (code) {
+        qrScanActive = false;
+        ui.btnScanQR.textContent = 'Escanear QR';
+        ui.btnScanQR.classList.remove('btn-active');
+        const label = `QR: ${code.data.slice(0, 40)}`;
+        addBadge(label);
+        lastEvents.push({ type: 'qr', label, data: code.data, at: new Date().toISOString() });
+        setBanner(`QR detectado: ${code.data.slice(0, 60)}`);
+        return;
+      }
+    }
+    setTimeout(scanQrFrame, 200);
+  }
+
+  function updateZoneList() {
+    if (!ui.zoneList || !geofence) return;
+    ui.zoneList.innerHTML = '';
+    const summary = geofence.getZoneSummary();
+    if (!summary.length) {
+      ui.zoneList.innerHTML = '<div class="item" style="color:var(--muted)">Sin zonas definidas</div>';
+      return;
+    }
+    summary.forEach((z) => {
+      const row = document.createElement('div');
+      row.className = 'item';
+      row.innerHTML = `<strong>${z.id}</strong> · ${z.name} · <small>${z.points} puntos</small>`;
+      ui.zoneList.appendChild(row);
+    });
   }
 
   async function processFrame(now) {
@@ -685,10 +709,7 @@
       console.warn('Error de detección', error);
     }
 
-    const handDetections = await detectHands(transform);
-    const allDetections = [...baseDetections, ...handDetections];
-
-    for (const det of allDetections) {
+    for (const det of baseDetections) {
       if (det.classType === 'vehículo' || det.classType === 'autobús') {
         const isAmbulance = await detectAmbulanceHeuristic(det.bbox, transform);
         if (isAmbulance) {
@@ -697,7 +718,7 @@
       }
     }
 
-    updateTracks(allDetections, performance.now());
+    updateTracks(baseDetections, performance.now());
 
     lastEvents = [];
     tracks.forEach((track) => {
@@ -708,11 +729,21 @@
       }
     });
 
+    if (geofence) {
+      const geoAlerts = geofence.checkTracks(tracks);
+      geoAlerts.forEach((alert) => {
+        const label = `🔴 ${alert.classType} entró a ${alert.zone}`;
+        addBadge(label);
+        lastEvents.push({ type: 'geofence', label, zone: alert.zone, trackId: alert.trackId });
+      });
+    }
+
     const metrics = computeRiskMetrics();
     updateStatePanel(metrics);
     renderObjectsList();
 
     ctx.clearRect(0, 0, ui.overlay.width, ui.overlay.height);
+    if (geofence) geofence.render();
     tracks.forEach(drawTrack);
 
     emitSocketPayload(metrics);
@@ -750,19 +781,69 @@
     });
   }
 
+  function registerQrScanner() {
+    ui.btnScanQR.addEventListener('click', () => {
+      if (!isRunning) {
+        setBanner('Inicia la cámara primero', true);
+        return;
+      }
+      if (qrScanActive) {
+        qrScanActive = false;
+        ui.btnScanQR.textContent = 'Escanear QR';
+        ui.btnScanQR.classList.remove('btn-active');
+      } else {
+        qrScanActive = true;
+        ui.btnScanQR.textContent = 'Cancelar QR';
+        ui.btnScanQR.classList.add('btn-active');
+        setBanner('Apunta la cámara al código QR...');
+        scanQrFrame();
+      }
+    });
+  }
+
+  function registerGeofenceControls() {
+    geofence = new window.Geofence(ui.overlay, ctx);
+
+    geofence.onAlert = (alert) => {
+      if (ui.geofenceStatus) {
+        ui.geofenceStatus.textContent = `⚠️ ${alert.classType} entró a ${alert.zone} (${alert.trackId})`;
+        ui.geofenceStatus.className = 'geofence-status geofence-alert';
+        setTimeout(() => {
+          ui.geofenceStatus.className = 'geofence-status';
+        }, 4000);
+      }
+    };
+
+    ui.btnDrawZone.addEventListener('click', () => {
+      if (geofence.drawing) {
+        geofence.stopDrawing();
+        ui.btnDrawZone.textContent = 'Dibujar zona';
+        ui.btnDrawZone.classList.remove('btn-active');
+        updateZoneList();
+      } else {
+        geofence.startDrawing();
+        ui.btnDrawZone.textContent = 'Finalizar zona (Enter)';
+        ui.btnDrawZone.classList.add('btn-active');
+        setBanner('Haz clic en el video para añadir puntos. Enter o doble clic para cerrar la zona.');
+      }
+    });
+
+    ui.btnClearZones.addEventListener('click', () => {
+      geofence.clearZones();
+      updateZoneList();
+    });
+  }
+
   async function boot() {
     try {
       setBanner('Solicitando cámara...');
       await startCamera();
 
-      setBanner('Cargando detector...');
+      setBanner('Cargando modelo de detección (mobilenet_v2)...');
       detector = new SenseCraftDetector();
-      await withTimeout(detector.init(), MODEL_TIMEOUT_MS, 'timeout modelo (15s) durante inicialización');
+      await withTimeout(detector.init(), MODEL_TIMEOUT_MS, 'timeout modelo (20s) durante inicialización');
 
-      setBanner('Cargando handpose...');
-      handModel = await withTimeout(window.handpose.load(), MODEL_TIMEOUT_MS, 'timeout modelo (15s) en handpose');
-
-      setBanner('motor SenseCraft listo');
+      setBanner('Sistema listo');
       isRunning = true;
       requestAnimationFrame(processFrame);
     } catch (error) {
@@ -778,5 +859,7 @@
   });
 
   registerSimulateQr();
+  registerQrScanner();
+  registerGeofenceControls();
   boot().catch(() => {});
 })();

@@ -8,7 +8,6 @@ export const ALL_ACTOR_CLASSES = [
   'bicicleta',
   'ciclista',
   'ambulancia',
-  'gesto',
   'aparcamiento',
   'senal_paso'
 ] as const;

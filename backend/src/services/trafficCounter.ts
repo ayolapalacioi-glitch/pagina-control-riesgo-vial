@@ -27,7 +27,6 @@ const zeroTotals = (): Totals => ({
   bicicleta: 0,
   ciclista: 0,
   ambulancia: 0,
-  gesto: 0,
   aparcamiento: 0,
   senal_paso: 0
 });
