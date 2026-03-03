@@ -164,3 +164,36 @@ button:hover {
     grid-template-columns: 1fr;
   }
 }
+
+.btn-zone {
+  background: #1a6b3a;
+}
+
+.btn-zone:hover {
+  background: #247d47;
+}
+
+.btn-active {
+  outline: 2px solid #ffcc4d;
+}
+
+.btn-danger {
+  background: #6b1a1a;
+}
+
+.btn-danger:hover {
+  background: #8b2020;
+}
+
+.geofence-status {
+  min-height: 24px;
+  padding: 4px 10px;
+  font-size: 13px;
+  color: var(--muted);
+  transition: color 0.3s;
+}
+
+.geofence-alert {
+  color: var(--danger);
+  font-weight: 700;
+}

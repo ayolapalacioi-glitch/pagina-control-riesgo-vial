@@ -18,6 +18,16 @@ services:
     depends_on:
       - mosquitto
 
+  vision-rt:
+    build:
+      context: ./vision-rt
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+
   mosquitto:
     image: eclipse-mosquitto:2
     restart: unless-stopped

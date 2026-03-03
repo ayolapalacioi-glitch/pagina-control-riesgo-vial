@@ -8,7 +8,7 @@
   </head>
   <body>
     <header>
-      <div><strong>Visión + Tracking + Riesgo en tiempo real</strong></div>
+      <div><strong>Visión + Tracking + Riesgo + Geocerca en tiempo real</strong></div>
       <div id="banner">Iniciando motor de visión...</div>
     </header>
 
@@ -20,8 +20,12 @@
         </div>
         <div class="controls">
           <button id="btnStart">Iniciar cámara</button>
+          <button id="btnScanQR">Escanear QR</button>
           <button id="btnSimQR">Simular QR (R)</button>
+          <button id="btnDrawZone" class="btn-zone">Dibujar zona</button>
+          <button id="btnClearZones" class="btn-danger">Borrar zonas</button>
         </div>
+        <div id="geofenceStatus" class="geofence-status"></div>
       </section>
 
       <aside class="panel">
@@ -36,6 +40,9 @@
           <div class="metric"><div class="k">vRel</div><div id="mVrel" class="v">-</div></div>
         </div>
 
+        <h3>Geocercas activas</h3>
+        <div id="zoneList" class="list"></div>
+
         <h3>Objetos detectados</h3>
         <div id="objectsList" class="list"></div>
       </aside>
@@ -44,10 +51,11 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose@0.0.7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
     <script src="./frame-schema.js"></script>
     <script src="./map-adapter.js"></script>
+    <script src="./geofence.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

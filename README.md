@@ -1,24 +1,33 @@
 # 🚸 Proyecto Seguridad Vial Inteligente - Visión Cero Colombia
 
-Sistema edge-to-cloud para reducir mortalidad de peatones en pasos de cebra bajo el **Plan Nacional de Seguridad Vial 2022-2031**, el enfoque **Sistema Seguro (ANSV)** y la filosofía **Visión Cero**.
+Sistema edge-to-cloud para reducir mortalidad de peatones en pasos de cebra bajo el **Plan Nacional de Seguridad Vial 2022-2031**, el enfoque **Sistema Seguro (ANSV)** y la filosofía **Visión Cero**. Integra detección de personas y vehículos en tiempo real, geocercas invisibles, escaneo de códigos QR y telemetría remota.
 
 ## Mensaje de Impacto
 
 **Tecnología al servicio de la vida. Priorizando al peatón más vulnerable para avanzar hacia cero muertes y lesiones graves en el tránsito en Colombia.**
 
+## Módulos del Sistema
+
+| Módulo | Descripción |
+|--------|-------------|
+| **Vision RT** | Detección + tracking + riesgo en tiempo real desde cámara (mobilenet_v2) |
+| **Geocerca invisible** | Zonas poligonales sobre el video; alertas al detectar intrusos |
+| **Escáner QR** | Escaneo real de códigos QR desde cámara para etiquetado de ubicación |
+| **Backend API** | Node.js 20 + TypeScript — ingesta MQTT/HTTP, riesgo TTC/PET, exportes |
+| **Dashboard Smart-City** | Mapa Leaflet, KPIs, gráficas, alertas en tiempo real |
+
 ## Arquitectura General
 
 - **Edge AI**: SenseCraft AI + modelo custom YOLO (v8/v11) detecta actores viales por frame.
+- **Vision RT** (`/vision-rt`): motor de visión en navegador con **mobilenet_v2** (mayor precisión), tracking multi-objeto, geocercas poligonales interactivas y escáner jsQR.
 - **Backend Node.js 20 + TypeScript**:
   - Ingesta por `MQTT` o `HTTP POST`.
   - Tracking por `track_id` (fallback básico por clase/índice).
   - Cálculo de riesgo con `TTC`, `PET` y predicción de conflicto a 1-5s.
-  - Persistencia de near-miss en `lowdb` (JSON local para demo competitiva).
+  - Persistencia de near-miss en `lowdb` (JSON local para demo).
   - Emisión en tiempo real a dashboard con `Socket.io`.
 
-### Modelos SenseCraft soportados (ingesta)
-
-El backend acepta y procesa estas clases en `detections[].class_name`:
+### Clases de actores detectados
 
 - `peaton`
 - `peaton_aereo` (detección cenital / vista superior)
@@ -29,11 +38,9 @@ El backend acepta y procesa estas clases en `detections[].class_name`:
 - `bicicleta`
 - `ciclista`
 - `ambulancia`
-- `gesto`
 - `aparcamiento`
 - `senal_paso`
 
-Esto permite integrar modelos SenseCraft especializados para: buses, bicicletas, gestos, estacionamiento, señalización de paso y ambulancias.
 - **Frontend Smart-City**:
   - KPIs en vivo, alerta visual/sonora/voz.
   - Mapa Leaflet + OSM con capas de cámaras, heatmap, choropleth demográfico y riesgo acumulado.
@@ -61,6 +68,16 @@ proyecto-seguridad-vial/
 │   ├── js/dashboard.js
 │   ├── js/map.js
 │   └── assets/
+├── vision-rt/                  ← Motor de visión + geocerca + QR
+│   ├── index.html
+│   ├── app.js                  ← Detección (mobilenet_v2), tracking, riesgo
+│   ├── geofence.js             ← Geocerca poligonal interactiva
+│   ├── map-adapter.js
+│   ├── frame-schema.js
+│   ├── server.js
+│   ├── styles.css
+│   ├── Dockerfile
+│   └── package.json
 ├── data/
 │   ├── sample-sensecraft-json.json
 │   ├── mock-near-miss-events.json
@@ -96,13 +113,21 @@ npm.cmd run dev
 
 Servidor en: `http://localhost:4000`
 
-### 3) Abrir Dashboard
+### 3) Vision RT (Visión + Geocercas + QR)
+
+```bash
+cd vision-rt
+npm install
+npm start
+```
+
+Motor de visión en: `http://localhost:3000`
+
+### 4) Abrir Dashboard
 
 Con backend encendido, abre:
 
 - `http://localhost:4000`
-
-> El frontend es servido directamente por Express. Todo (mapa + cámara IA + tracking + riesgo + telemetría) está integrado en esta única página.
 
 ## Arranque con Docker (recomendado para demo)
 
@@ -115,6 +140,7 @@ docker compose up --build
 Con eso se levantan:
 
 - Backend: `http://localhost:4000`
+- Vision RT: `http://localhost:3000`
 - MQTT broker (Mosquitto): `localhost:1883`
 
 Para detener:
@@ -122,6 +148,34 @@ Para detener:
 ```bash
 docker compose down
 ```
+
+## Funcionalidades de Vision RT
+
+### Detección mejorada de personas y vehículos
+
+- Modelo **mobilenet_v2** (coco-ssd full) — mayor precisión que la versión lite.
+- Filtro de confianza mínima (0.42) para eliminar falsos positivos.
+- Filtro de tamaño mínimo (30×30 px) para ignorar detecciones de ruido.
+- Tracking multi-objeto con smoothing y predicción de trayectoria.
+- Detección heurística de ambulancias por análisis de color.
+
+### Geocerca invisible (Cerca invisible)
+
+1. Abre `http://localhost:3000` e inicia la cámara.
+2. Clic en **Dibujar zona** — el cursor cambia a punto de mira.
+3. Haz clic en el video para añadir vértices al polígono.
+4. Cierra la zona con **Enter** o doble clic.
+5. Puedes crear múltiples zonas con colores diferenciados.
+6. Al detectar cualquier persona o vehículo dentro de la zona: **alerta automática** en el panel y socket.
+7. Clic en **Borrar zonas** para limpiar todas las geocercas.
+
+### Escáner QR
+
+1. Con la cámara activa, clic en **Escanear QR**.
+2. El sistema analiza el feed de video frame a frame con `jsQR`.
+3. Al detectar un código QR: muestra el contenido en el banner y registra el evento.
+4. Útil para leer coordenadas GPS, IDs de zona o metadatos de ubicación.
+5. También puedes simular un evento QR con el botón **Simular QR** (o tecla `R`).
 
 ## Flujo de demo (sin hardware)
 
@@ -141,16 +195,9 @@ docker compose down
 
 1. Abre `http://localhost:4000`.
 2. Clic en **Abrir cámara PC (IA)** y acepta permisos del navegador.
-3. El sistema detecta en tiempo real: `peaton`, `motocicleta`, `automovil`, `bus_transcaribe` (mapeado desde clase `bus`) y `ciclista`.
+3. El sistema detecta en tiempo real: `peaton`, `motocicleta`, `automovil`, `bus_transcaribe` y `ciclista`.
 4. Cada ciclo se envía al backend por `POST /api/ingest` y actualiza KPIs, riesgo y mapa.
 5. Clic en **Reporte detecciones cámara** para descargar conteos acumulados por clase/cámara.
-
-Notas:
-
-- En modo cámara PC se usa IA en navegador (COCO-SSD) como fallback de demo; la ingesta mantiene el mismo esquema SenseCraft en backend.
-- Para `gesto`, `ambulancia`, `peaton_aereo` y `movimiento_peaton` en producción, se recomienda enviar esas clases desde el modelo custom de SenseCraft (edge), porque el fallback del navegador no está entrenado específicamente para todas ellas.
-- La app intenta usar la geolocalización actual del equipo para ubicar la cámara en el mapa.
-- Si no hay permiso de ubicación, usa coordenadas de Cartagena por defecto.
 
 ## MQTT y HTTP
 
@@ -190,10 +237,8 @@ Payload esperado (ejemplo):
 - Peatón dentro de cebra.
 - Vehículo con trayectoria hacia cebra.
 - Velocidad vehicular > 30 km/h.
-- **TTC**:
-  - `< 2.5s` crítico.
-- **PET**:
-  - `< 1.5s` crítico.
+- **TTC**: `< 2.5s` crítico.
+- **PET**: `< 1.5s` crítico.
 - Predicción de conflicto (1-5s).
 
 Salida: `BAJO | MEDIO | ALTO | CRITICO` + factores explicativos + acción recomendada.
@@ -221,10 +266,12 @@ Genera frames sintéticos en `data/sample-sensecraft-json.json`.
 
 1. **Problema real local**: siniestros peatonales en cebra (Caribe colombiano).
 2. **Sistema proactivo**: no esperamos el choque, predecimos conflicto con TTC/PET.
-3. **Enfoque demográfico**: priorización por vulnerabilidad (niñez/adulto mayor/IPM).
-4. **Escalabilidad ciudad**: botón “Simular múltiples cámaras”.
-5. **Evidencia de gestión pública**: exportes CSV/PDF para secretarías de movilidad.
-6. **Cierre social**: “No se trata de cámaras, se trata de vidas salvadas”.
+3. **Geocerca invisible**: zona de exclusión virtual con alertas al instante — ideal para escuelas y hospitales.
+4. **Escaneo QR**: etiquetado de ubicación en campo con el teléfono o tablet.
+5. **Enfoque demográfico**: priorización por vulnerabilidad (niñez/adulto mayor/IPM).
+6. **Escalabilidad ciudad**: botón "Simular múltiples cámaras".
+7. **Evidencia de gestión pública**: exportes CSV/PDF para secretarías de movilidad.
+8. **Cierre social**: "No se trata de cámaras, se trata de vidas salvadas".
 
 ## Roadmap post-competencia
 
@@ -232,6 +279,7 @@ Genera frames sintéticos en `data/sample-sensecraft-json.json`.
 - Filtro de Kalman robusto y re-identificación multi-cámara.
 - Integración con paneles VMS y semáforos inteligentes.
 - Analítica espacial avanzada (kernel density + priorización de intervención).
+- Geocercas exportables como GeoJSON para SIG municipales.
 
 ---
 
