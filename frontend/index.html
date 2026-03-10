@@ -28,10 +28,12 @@
           <button id="btnStartCamera">Abrir cámara PC (IA)</button>
           <button id="btnStopCamera">Detener cámara</button>
           <button id="btnSimQR">Simular QR (R)</button>
+          <button id="btnShowQrLink">Generar enlace QR red</button>
           <button id="btnCameraReport">Reporte detecciones cámara</button>
           <button id="btnCsv">Exportar CSV</button>
           <button id="btnPdf">Reporte PDF Diario</button>
         </div>
+        <div id="qrLinkBox" class="card" style="margin-bottom:10px; padding:10px; display:none;"></div>
         <div class="camera-wrap" style="margin-bottom:10px;">
           <video id="cameraVideo" autoplay muted playsinline></video>
           <canvas id="cameraCanvas"></canvas>
@@ -92,6 +94,11 @@
           <h3>Objetos en seguimiento</h3>
           <div id="objectsLiveList" class="list"></div>
         </div>
+        <div class="card">
+          <h3>Dispositivos conectados</h3>
+          <div id="devicesCount" style="margin-bottom:8px; color: var(--muted);">0 conectados</div>
+          <div id="devicesList" class="list"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -100,9 +107,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose@0.0.7"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="js/frame-schema.js"></script>
   <script src="js/map-adapter.js"></script>
   <script src="js/map.js"></script>

@@ -94,13 +94,13 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Servidor en: `http://localhost:4000`
+Servidor en red local (Docker): `http://192.168.1.35:4000`
 
 ### 3) Abrir Dashboard
 
 Con backend encendido, abre:
 
-- `http://localhost:4000`
+- `http://192.168.1.35:4000`
 
 > El frontend es servido directamente por Express. Todo (mapa + cámara IA + tracking + riesgo + telemetría) está integrado en esta única página.
 
@@ -109,19 +109,68 @@ Con backend encendido, abre:
 Desde la raíz del proyecto:
 
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
 
 Con eso se levantan:
 
-- Backend: `http://localhost:4000`
-- MQTT broker (Mosquitto): `localhost:1883`
+- Backend: `http://192.168.1.35:4000`
+- MQTT broker (Mosquitto): `192.168.1.35:1883`
 
 Para detener:
 
 ```bash
 docker compose down
 ```
+
+Ver estado:
+
+```bash
+docker compose ps
+```
+
+Ver logs del backend:
+
+```bash
+docker compose logs -f backend
+```
+
+### Obtener TU-IP-LOCAL automáticamente (Windows)
+
+En PowerShell, usa:
+
+```powershell
+(Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
+  $_.IPAddress -notlike '127.*' -and
+  $_.IPAddress -notlike '169.254.*' -and
+  $_.PrefixOrigin -ne 'WellKnown'
+} | Select-Object -First 1 -ExpandProperty IPAddress)
+```
+
+Opcional (copiar al portapapeles):
+
+```powershell
+$ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
+  $_.IPAddress -notlike '127.*' -and
+  $_.IPAddress -notlike '169.254.*' -and
+  $_.PrefixOrigin -ne 'WellKnown'
+} | Select-Object -First 1 -ExpandProperty IPAddress)
+$ip | Set-Clipboard
+$ip
+```
+
+### Si Docker no carga (solución rápida)
+
+En PowerShell, desde la raíz del proyecto:
+
+```powershell
+docker compose down --remove-orphans
+docker compose rm -f
+docker volume rm proyecto-seguridad-vial_backend_node_modules
+docker compose up --build
+```
+
+Esto limpia contenedores huérfanos y reinicia las dependencias del backend si quedaron corruptas.
 
 ## Flujo de demo (sin hardware)
 
@@ -139,7 +188,7 @@ docker compose down
 
 ## Modo Cámara del PC (detección en vivo)
 
-1. Abre `http://localhost:4000`.
+1. Abre `http://192.168.1.35:4000`.
 2. Clic en **Abrir cámara PC (IA)** y acepta permisos del navegador.
 3. El sistema detecta en tiempo real: `peaton`, `motocicleta`, `automovil`, `bus_transcaribe` (mapeado desde clase `bus`) y `ciclista`.
 4. Cada ciclo se envía al backend por `POST /api/ingest` y actualiza KPIs, riesgo y mapa.
@@ -151,6 +200,108 @@ Notas:
 - Para `gesto`, `ambulancia`, `peaton_aereo` y `movimiento_peaton` en producción, se recomienda enviar esas clases desde el modelo custom de SenseCraft (edge), porque el fallback del navegador no está entrenado específicamente para todas ellas.
 - La app intenta usar la geolocalización actual del equipo para ubicar la cámara en el mapa.
 - Si no hay permiso de ubicación, usa coordenadas de Cartagena por defecto.
+
+### Robustez de detección (anti-flicker para demo)
+
+La vista principal ahora incluye endurecimiento para que la detección no “flaquee” en vivo:
+
+- Filtrado por confianza mínima y tamaño de caja para reducir ruido.
+- Deduplicación por solapamiento (NMS) para evitar doble conteo del mismo objeto.
+- Tracking temporal con tolerancia a frames perdidos (persistencia corta de tracks).
+- Suavizado de score y trayectorias para reducir parpadeo visual.
+- Recuperación automática del motor de IA si hay errores consecutivos del detector.
+
+## QR multi-dispositivo para cerca invisible
+
+La cerca invisible ahora se sincroniza por `Socket.io` para todos los clientes conectados (no solo un dispositivo), con radio fijo de **50 metros**.
+
+Opciones de activación:
+
+1. Botón **Simular QR (R)** en cualquier cliente conectado.
+2. Escaneo de QR con URL:
+
+```text
+http://<IP-O-DOMINIO>:4000/viewer.html?qr=1
+```
+
+Cuando un dispositivo abre esa URL:
+
+- activa la cerca invisible de 50m,
+- el backend la comparte con todos los clientes,
+- y la posición se actualiza en tiempo real con la geolocalización del dispositivo que la activó.
+
+Importante para ubicación correcta en celular:
+
+- El navegador del celular debe aceptar permiso de ubicación para `viewer.html`.
+- Si el permiso es denegado, el sistema pide reintentar con **Usar mi ubicación**.
+- En muchos móviles, la geolocalización precisa requiere `HTTPS` (o `localhost`).
+- Si no hay GPS disponible, puedes fijar manualmente tocando el mapa.
+
+### URL final configurada para red local
+
+Se configuró la IP fija de la red local para acceso desde celular:
+
+```text
+http://192.168.1.35:4000/viewer.html?qr=1
+```
+
+La vista `viewer.html` muestra solo:
+
+- mapa,
+- cerca invisible (50m),
+- riesgos cercanos a la ubicación del usuario.
+
+### Opción recomendada para permiso GPS en celular (HTTPS)
+
+Si el navegador móvil no pide ubicación usando IP local, abre un túnel HTTPS:
+
+```powershell
+npx.cmd --yes localtunnel --port 4000
+```
+
+Luego abre en el celular la URL `https://...loca.lt/viewer.html?qr=1` que te muestre la terminal.
+
+> Nota: en algunos dispositivos, LocalTunnel puede pedir una verificación adicional en la primera apertura.
+> Si aparece "Tunnel Password", usa tu **IP pública** (NO la IP local `192.168.1.35`).
+> Puedes verla con: `Invoke-WebRequest -UseBasicParsing https://loca.lt/mytunnelpassword | Select-Object -ExpandProperty Content`
+
+Flujo definitivo recomendado:
+
+1. Ejecuta `npx.cmd --yes localtunnel --port 4000`.
+2. Abre el **dashboard** desde la URL `https://...loca.lt` (no desde `http://192.168.x.x`).
+3. Genera el QR desde ese dashboard HTTPS.
+4. Escanea ese QR: se abrirá `viewer.html?qr=1` en HTTPS y el navegador móvil permitirá geolocalización.
+
+### Arranque seguro en 1 comando (recomendado)
+
+Desde la raíz del proyecto:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-secure-demo.ps1 -OpenBrowser
+```
+
+Comando directo (copiar y pegar desde cualquier ruta):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "C:\Users\ayola\OneDrive\Desktop\Proyectoxspoiler\proyecto-seguridad-vial\scripts\start-secure-demo.ps1" -OpenBrowser
+```
+
+### Tunnel Password (LocalTunnel)
+
+Si aparece la pantalla de verificación de LocalTunnel, usa este comando para obtener el password correcto:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing https://loca.lt/mytunnelpassword | Select-Object -ExpandProperty Content
+```
+
+> Importante: el Tunnel Password es tu **IP pública** (puede cambiar), no la IP local `192.168.1.35`.
+
+El script:
+
+- levanta Docker (`backend` + `mosquitto`),
+- crea túnel HTTPS con LocalTunnel,
+- imprime URL HTTPS de dashboard y viewer,
+- y copia la URL del dashboard al portapapeles.
 
 ## MQTT y HTTP
 

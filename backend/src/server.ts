@@ -3,6 +3,8 @@ import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
+import os from 'os';
+import fs from 'fs';
 import { env } from './config/env';
 import { buildApiRoutes } from './routes/apiRoutes';
 import { createMqttClient } from './config/mqtt';
@@ -12,6 +14,52 @@ import { calculateRisk } from './services/riskCalculator';
 import { saveEvent } from './services/eventStore';
 import { registerTracksForReport } from './services/trafficCounter';
 import { buildCounts } from './services/counts';
+
+type FenceUpdate = {
+  active: boolean;
+  cameraId: string;
+  gps: {
+    lat: number;
+    lng: number;
+  };
+  radiusMeters: number;
+  triggeredAt: string;
+  expiresAt: string | null;
+  source: string;
+  triggeredBy: string;
+};
+
+type ConnectedDevice = {
+  socketId: string;
+  displayName: string;
+  kind: 'dashboard' | 'viewer' | 'unknown';
+  userAgent: string;
+  ip: string;
+  connectedAt: string;
+  gps?: {
+    lat: number;
+    lng: number;
+  };
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+let latestFenceUpdate: FenceUpdate | null = null;
+const connectedDevices = new Map<string, ConnectedDevice>();
+
+function toKind(value: unknown): ConnectedDevice['kind'] {
+  if (value === 'dashboard' || value === 'viewer') return value;
+  return 'unknown';
+}
+
+function emitDevicesUpdate() {
+  io.emit('devices_update', {
+    total: connectedDevices.size,
+    devices: Array.from(connectedDevices.values())
+  });
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -26,6 +74,57 @@ app.use(express.json({ limit: '2mb' }));
 app.use('/data', express.static(path.resolve(process.cwd(), '../data')));
 app.use('/', express.static(path.resolve(process.cwd(), '../frontend')));
 app.use('/vision', express.static(path.resolve(process.cwd(), '../vision-rt')));
+
+function getLocaltunnelPublicUrl(): string | null {
+  try {
+    const logPath = path.resolve(process.cwd(), '../.tmp/localtunnel.out.log');
+    if (!fs.existsSync(logPath)) return null;
+
+    const content = fs.readFileSync(logPath, 'utf8');
+    const match = content.match(/https:\/\/[^\s]+\.loca\.lt/i);
+    return match ? match[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+app.get('/api/network-qr', (req, res) => {
+  const interfaces = os.networkInterfaces();
+  const port = env.port;
+  const urls = new Set<string>();
+  const secureUrls = new Set<string>();
+
+  const envPublicBase = (process.env.PUBLIC_BASE_URL || '').trim();
+  if (envPublicBase.startsWith('https://')) {
+    secureUrls.add(`${envPublicBase.replace(/\/$/, '')}/viewer.html?qr=1`);
+  }
+
+  const localtunnelBase = getLocaltunnelPublicUrl();
+  if (localtunnelBase) {
+    secureUrls.add(`${localtunnelBase.replace(/\/$/, '')}/viewer.html?qr=1`);
+  }
+
+  Object.values(interfaces).forEach((entries) => {
+    (entries || []).forEach((entry) => {
+      if (!entry || entry.family !== 'IPv4' || entry.internal) return;
+      urls.add(`http://${entry.address}:${port}/viewer.html?qr=1`);
+    });
+  });
+
+  const host = req.headers.host;
+  if (typeof host === 'string' && host.length > 0) {
+    urls.add(`http://${host}/viewer.html?qr=1`);
+  }
+
+  const allUrls = [...Array.from(secureUrls), ...Array.from(urls)];
+
+  res.json({
+    primary: allUrls[0] || `http://localhost:${port}/viewer.html?qr=1`,
+    urls: allUrls,
+    hasSecure: secureUrls.size > 0
+  });
+});
+
 app.use('/api', buildApiRoutes(io));
 
 app.get('/vision', (_req, res) => {
@@ -71,6 +170,29 @@ io.on('connection', (socket) => {
   console.log(`[WS] Cliente conectado: ${socket.id}`);
   socket.emit('message', { text: 'Conectado al sistema de seguridad vial inteligente.' });
 
+  const defaultDevice: ConnectedDevice = {
+    socketId: socket.id,
+    displayName: 'Dispositivo',
+    kind: 'unknown',
+    userAgent: socket.handshake.headers['user-agent'] || 'N/A',
+    ip: socket.handshake.address || 'N/A',
+    connectedAt: new Date().toISOString()
+  };
+  connectedDevices.set(socket.id, defaultDevice);
+  emitDevicesUpdate();
+
+  if (latestFenceUpdate) {
+    const isExpired = latestFenceUpdate.expiresAt
+      ? new Date(latestFenceUpdate.expiresAt).getTime() <= Date.now()
+      : false;
+
+    if (isExpired) {
+      latestFenceUpdate = null;
+    } else {
+      socket.emit('fence_update', latestFenceUpdate);
+    }
+  }
+
   socket.on('state_update', (payload) => {
     const envelope = {
       source: socket.id,
@@ -88,8 +210,96 @@ io.on('connection', (socket) => {
     };
     io.emit('objects_update', envelope);
   });
+
+  socket.on('fence_update', (payload: unknown) => {
+    if (!isRecord(payload)) return;
+
+    const active = payload.active !== false;
+    if (!active) {
+      if (latestFenceUpdate?.triggeredBy && latestFenceUpdate.triggeredBy !== socket.id) return;
+      latestFenceUpdate = null;
+      io.emit('fence_update', {
+        active: false,
+        cameraId: typeof payload.cameraId === 'string' ? payload.cameraId : 'cam',
+        source: 'qr',
+        triggeredBy: socket.id,
+        triggeredAt: new Date().toISOString(),
+        expiresAt: null
+      });
+      return;
+    }
+
+    const gpsPayload = isRecord(payload.gps) ? payload.gps : null;
+    const lat = typeof gpsPayload?.lat === 'number' ? gpsPayload.lat : NaN;
+    const lng = typeof gpsPayload?.lng === 'number' ? gpsPayload.lng : NaN;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    const source = typeof payload.source === 'string' ? payload.source : 'qr';
+
+    const radiusMeters = 50;
+    const nowIso = new Date().toISOString();
+
+    let expiresAt: string | null = null;
+    if (typeof payload.expiresAt === 'string') {
+      const ts = new Date(payload.expiresAt).getTime();
+      if (Number.isFinite(ts) && ts > Date.now()) {
+        expiresAt = new Date(ts).toISOString();
+      }
+    }
+
+    const envelope: FenceUpdate = {
+      active: true,
+      cameraId: typeof payload.cameraId === 'string' ? payload.cameraId : 'cam',
+      gps: { lat, lng },
+      radiusMeters,
+      triggeredAt: nowIso,
+      expiresAt,
+      source,
+      triggeredBy: socket.id
+    };
+
+    latestFenceUpdate = envelope;
+    io.emit('fence_update', envelope);
+  });
+
+  socket.on('device_hello', (payload: unknown) => {
+    const current = connectedDevices.get(socket.id);
+    if (!current || !isRecord(payload)) return;
+
+    const displayName = typeof payload.displayName === 'string' && payload.displayName.trim().length > 0
+      ? payload.displayName.trim().slice(0, 60)
+      : current.displayName;
+
+    const kind = toKind(payload.kind);
+    connectedDevices.set(socket.id, {
+      ...current,
+      displayName,
+      kind
+    });
+    emitDevicesUpdate();
+  });
+
+  socket.on('location_update', (payload: unknown) => {
+    const current = connectedDevices.get(socket.id);
+    if (!current || !isRecord(payload)) return;
+    const gpsPayload = isRecord(payload.gps) ? payload.gps : null;
+    const lat = typeof gpsPayload?.lat === 'number' ? gpsPayload.lat : NaN;
+    const lng = typeof gpsPayload?.lng === 'number' ? gpsPayload.lng : NaN;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    connectedDevices.set(socket.id, {
+      ...current,
+      gps: { lat, lng }
+    });
+    emitDevicesUpdate();
+  });
+
+  socket.on('disconnect', () => {
+    connectedDevices.delete(socket.id);
+    emitDevicesUpdate();
+  });
 });
 
 server.listen(env.port, () => {
-  console.log(`Backend activo en http://localhost:${env.port}`);
+  console.log(`Backend activo en http://0.0.0.0:${env.port} (acceso por IP de red o dominio)`);
 });

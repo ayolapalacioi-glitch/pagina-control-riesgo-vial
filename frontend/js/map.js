@@ -5,6 +5,9 @@ let demographicLayer;
 let riskLayer;
 let historicalLayer;
 let liveTracksLayer;
+let fenceLayer;
+let invisibleFenceCircle;
+let invisibleFenceTimeout;
 
 const cameraRegistry = new Map();
 const heatPoints = [];
@@ -28,6 +31,7 @@ window.initMap = async function initMap() {
   riskLayer = L.layerGroup().addTo(map);
   historicalLayer = L.layerGroup().addTo(map);
   liveTracksLayer = L.layerGroup().addTo(map);
+  fenceLayer = L.layerGroup().addTo(map);
 
   const geojson = await fetch('/data/geojson-cartagena-manzanas-demografico-sample.json').then((res) => res.json());
 
@@ -76,8 +80,56 @@ window.initMap = async function initMap() {
     'Choropleth demográfico': demographicLayer,
     'Riesgo acumulado': riskLayer,
     'Siniestralidad histórica': historicalLayer,
-    'Tracks tiempo real': liveTracksLayer
+    'Tracks tiempo real': liveTracksLayer,
+    'Cerca invisible': fenceLayer
   }).addTo(map);
+};
+
+window.updateMapFence = function updateMapFence(payload) {
+  if (!map || !fenceLayer || !payload) return;
+
+  if (invisibleFenceTimeout) {
+    clearTimeout(invisibleFenceTimeout);
+    invisibleFenceTimeout = null;
+  }
+
+  if (!payload.active) {
+    if (invisibleFenceCircle) {
+      fenceLayer.removeLayer(invisibleFenceCircle);
+      invisibleFenceCircle = null;
+    }
+    return;
+  }
+
+  if (!payload.gps || typeof payload.gps.lat !== 'number' || typeof payload.gps.lng !== 'number') return;
+
+  const radius = Math.max(20, Math.min(300, Number(payload.radiusMeters) || 80));
+  const center = [payload.gps.lat, payload.gps.lng];
+
+  if (!invisibleFenceCircle) {
+    invisibleFenceCircle = L.circle(center, {
+      radius,
+      color: '#ef4444',
+      weight: 2,
+      fillColor: '#ef4444',
+      fillOpacity: 0.08
+    }).addTo(fenceLayer);
+  } else {
+    invisibleFenceCircle.setLatLng(center);
+    invisibleFenceCircle.setRadius(radius);
+  }
+
+  invisibleFenceCircle.bindPopup(`<b>Cerca invisible activa</b><br/>Cámara: ${payload.cameraId || 'cam'}<br/>Radio: ${Math.round(radius)} m`);
+
+  const expiresAt = payload.expiresAt ? new Date(payload.expiresAt).getTime() : NaN;
+  if (Number.isFinite(expiresAt) && expiresAt > Date.now()) {
+    invisibleFenceTimeout = setTimeout(() => {
+      if (invisibleFenceCircle) {
+        fenceLayer.removeLayer(invisibleFenceCircle);
+        invisibleFenceCircle = null;
+      }
+    }, expiresAt - Date.now());
+  }
 };
 
 window.updateMapFromObjectsEnvelope = function updateMapFromObjectsEnvelope(envelope) {

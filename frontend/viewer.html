@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visor Ciudadano - Seguridad Vial</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #0b1220; color: #e2e8f0; font-family: Segoe UI, Arial, sans-serif; }
+    #map { width: 100%; height: 100%; }
+    .overlay {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      z-index: 1000;
+      pointer-events: none;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 10px;
+      padding: 10px 12px;
+      pointer-events: auto;
+      backdrop-filter: blur(4px);
+    }
+    .title { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
+    .meta { font-size: 0.85rem; color: #cbd5e1; }
+    .risk { margin-top: 6px; font-size: 0.85rem; }
+    .actions { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .actions button {
+      background: #0ea5e9;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay">
+    <div class="card">
+      <div class="title">Visor de Riesgo Cercano</div>
+      <div id="status" class="meta">Inicializando ubicación y mapa...</div>
+      <div id="riskInfo" class="risk">Sin eventos cercanos.</div>
+      <div class="actions">
+        <button id="btnRequestLocation">Usar mi ubicación</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/viewer.js"></script>
+</body>
+</html>

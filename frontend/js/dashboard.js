@@ -1,9 +1,33 @@
-const API_BASE = 'http://localhost:4000/api';
-const socket = io('http://localhost:4000');
+const API_BASE = `${window.location.origin}/api`;
+const socket = io(window.location.origin);
+const urlParams = new URLSearchParams(window.location.search);
+const isQrEntry = urlParams.get('qr') === '1';
+const isViewerPath = window.location.pathname.toLowerCase().includes('viewer.html');
+
+if (isQrEntry && !isViewerPath) {
+  window.location.replace('/viewer.html?qr=1');
+}
+
 const DEFAULT_GPS = { lat: 10.4236, lng: -75.5457 };
 const CAMERA_ID = 'cam-pc-live-001';
 const DETECTION_ENGINE = 'sensecraft';
 const MODEL_TIMEOUT_MS = 15000;
+const FENCE_RADIUS_METERS = 50;
+const FENCE_TTL_MS = 180000;
+const FENCE_EMIT_INTERVAL_MS = 1500;
+const FRAME_INTERVAL_MS = 110;
+const HAND_DETECTION_INTERVAL_MS = 320;
+const AMBULANCE_SCAN_INTERVAL_MS = 650;
+const UI_UPDATE_INTERVAL_MS = 220;
+const REALTIME_EMIT_INTERVAL_MS = 320;
+const CRITICAL_ALERT_COOLDOWN_MS = 7000;
+const PREFERRED_LAN_IP = '192.168.1.35';
+const MIN_DETECTION_SCORE = 0.36;
+const MIN_BBOX_AREA_PX = 180;
+const NMS_IOU_THRESHOLD = 0.58;
+const TRACK_TTL_MS = 1800;
+const MAX_TRACK_MISSES = 7;
+const DETECTOR_ERROR_LIMIT = 4;
 
 const messages = [
   'La vida del peatón es sagrada.',
@@ -53,6 +77,20 @@ let nextTrackId = 1;
 let tracks = [];
 let lastEmittedEvents = [];
 let lastIngestMs = 0;
+let lastRealtimeEmitMs = 0;
+let lastUiUpdateMs = 0;
+let lastCriticalAlertMs = 0;
+let lastHandDetectionMs = 0;
+let lastAmbulanceScanMs = 0;
+let cachedHandDetections = [];
+let geolocationWatchId = null;
+let fenceOwnedByThisClient = false;
+let fenceSyncTimer = null;
+let lastFenceNotice = '';
+let lastFenceNoticeMs = 0;
+let visionDepsReady = false;
+let detectorErrorStreak = 0;
+let detectorRecovering = false;
 const eventCooldown = new Map();
 
 const riskPill = document.getElementById('riskPill');
@@ -72,6 +110,9 @@ const liveTTC = document.getElementById('liveTTC');
 const livePET = document.getElementById('livePET');
 const liveVRel = document.getElementById('liveVRel');
 const vehicleTableBody = document.getElementById('vehicleTableBody');
+const qrLinkBox = document.getElementById('qrLinkBox');
+const devicesCount = document.getElementById('devicesCount');
+const devicesList = document.getElementById('devicesList');
 const cameraCtx = cameraCanvas.getContext('2d');
 const cropCanvas = document.createElement('canvas');
 const cropCtx = cropCanvas.getContext('2d', { willReadFrequently: true });
@@ -82,6 +123,43 @@ const mapAdapter = new window.MapAdapter({
   east: -75.5402,
   west: -75.5498
 });
+
+function emitFenceUpdate(source = 'qr', active = true) {
+  const now = Date.now();
+  const payload = {
+    active,
+    source,
+    cameraId: CAMERA_ID,
+    gps: currentGps,
+    radiusMeters: FENCE_RADIUS_METERS,
+    expiresAt: active ? new Date(now + FENCE_TTL_MS).toISOString() : null
+  };
+  socket.emit('fence_update', payload);
+  return payload;
+}
+
+function startFenceRealtimeSync(source = 'qr') {
+  fenceOwnedByThisClient = true;
+  emitFenceUpdate(source, true);
+
+  if (fenceSyncTimer) {
+    clearInterval(fenceSyncTimer);
+  }
+
+  fenceSyncTimer = setInterval(() => {
+    if (!fenceOwnedByThisClient || !socket.connected) return;
+    emitFenceUpdate('device_location', true);
+  }, FENCE_EMIT_INTERVAL_MS);
+}
+
+function stopFenceRealtimeSync(source = 'manual') {
+  fenceOwnedByThisClient = false;
+  if (fenceSyncTimer) {
+    clearInterval(fenceSyncTimer);
+    fenceSyncTimer = null;
+  }
+  emitFenceUpdate(source, false);
+}
 
 function withTimeout(promise, timeoutMs, msg) {
   return new Promise((resolve, reject) => {
@@ -94,6 +172,58 @@ function withTimeout(promise, timeoutMs, msg) {
       reject(error);
     });
   });
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[data-src="${src}"]`);
+    if (existing) {
+      existing.addEventListener('load', () => resolve(true), { once: true });
+      existing.addEventListener('error', () => reject(new Error(`No se pudo cargar ${src}`)), { once: true });
+      if (existing.dataset.loaded === '1') resolve(true);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.dataset.src = src;
+    script.onload = () => {
+      script.dataset.loaded = '1';
+      resolve(true);
+    };
+    script.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+async function ensureVisionDependencies() {
+  if (visionDepsReady) return;
+  await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js');
+  await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3');
+  await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose@0.0.7');
+  visionDepsReady = true;
+}
+
+async function fetchIpBasedLocation() {
+  const endpoints = [
+    'https://ipapi.co/json/',
+    'https://ipwho.is/'
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await withTimeout(fetch(endpoint), 3500, 'timeout ip geolocation');
+      const data = await response.json();
+      const lat = Number(data.latitude ?? data.lat);
+      const lng = Number(data.longitude ?? data.lon ?? data.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { lat, lng };
+      }
+    } catch {
+    }
+  }
+  return null;
 }
 
 function showStartupError(error) {
@@ -120,11 +250,15 @@ function ensureSecureContext() {
   if (window.isSecureContext || host === 'localhost' || host === '127.0.0.1') {
     return;
   }
-  throw new Error('Contexto no seguro. Usa http://localhost:4000');
+  throw new Error(`Contexto no seguro. Abre en HTTPS o en origen local válido: ${window.location.origin}`);
+}
+
+function canUseGeolocation() {
+  return typeof navigator !== 'undefined' && !!navigator.geolocation;
 }
 
 async function detectLocation() {
-  if (!navigator.geolocation) return;
+  if (!canUseGeolocation()) return;
   try {
     const position = await new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -136,9 +270,35 @@ async function detectLocation() {
     if (window.setMapFocus) {
       window.setMapFocus(currentGps.lat, currentGps.lng, 'Ubicación actual del equipo');
     }
+    socket.emit('location_update', { gps: currentGps });
   } catch {
-    currentGps = { ...DEFAULT_GPS };
+    const byIp = await fetchIpBasedLocation();
+    currentGps = byIp || { ...DEFAULT_GPS };
+    if (window.setMapFocus) {
+      window.setMapFocus(currentGps.lat, currentGps.lng, byIp ? 'Ubicación aproximada por red' : 'Ubicación por defecto');
+    }
   }
+}
+
+function startLocationWatch() {
+  if (!canUseGeolocation() || geolocationWatchId !== null) return;
+  geolocationWatchId = navigator.geolocation.watchPosition((position) => {
+    currentGps = { lat: position.coords.latitude, lng: position.coords.longitude };
+    if (window.setMapFocus) {
+      window.setMapFocus(currentGps.lat, currentGps.lng, 'Ubicación actual del equipo');
+    }
+    socket.emit('location_update', { gps: currentGps });
+  }, () => null, {
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 2000
+  });
+}
+
+function stopLocationWatch() {
+  if (!canUseGeolocation() || geolocationWatchId === null) return;
+  navigator.geolocation.clearWatch(geolocationWatchId);
+  geolocationWatchId = null;
 }
 
 function riskView(level) {
@@ -283,6 +443,28 @@ function iou(a, b) {
   return union > 0 ? inter / union : 0;
 }
 
+function minScoreForClass(classType) {
+  if (classType === 'peaton') return 0.34;
+  if (classType === 'gesto') return 0.28;
+  if (classType === 'bicicleta' || classType === 'motocicleta') return 0.32;
+  return MIN_DETECTION_SCORE;
+}
+
+function filterAndDeduplicateDetections(detections) {
+  const filtered = detections
+    .filter((d) => Number.isFinite(d.score) && d.score >= minScoreForClass(d.classType))
+    .filter((d) => (d.bbox.w * d.bbox.h) >= MIN_BBOX_AREA_PX)
+    .sort((a, b) => b.score - a.score);
+
+  const selected = [];
+  filtered.forEach((det) => {
+    const duplicated = selected.some((kept) => kept.classType === det.classType && iou(kept.bbox, det.bbox) > NMS_IOU_THRESHOLD);
+    if (!duplicated) selected.push(det);
+  });
+
+  return selected;
+}
+
 function speedPxPerSec(v) {
   return Math.sqrt(v.vx * v.vx + v.vy * v.vy);
 }
@@ -347,7 +529,7 @@ class SenseCraftDetector {
 }
 
 function updateTracks(detections, nowMs) {
-  const active = tracks.filter((track) => nowMs - track.lastSeenMs < 1200);
+  const active = tracks.filter((track) => nowMs - track.lastSeenMs < TRACK_TTL_MS && (track.missCount || 0) <= MAX_TRACK_MISSES);
   const candidates = [];
 
   for (let ti = 0; ti < active.length; ti += 1) {
@@ -392,12 +574,25 @@ function updateTracks(detections, nowMs) {
     t.bbox = smooth;
     t.center = centerOf(smooth);
     t.classType = d.classType;
-    t.score = d.score;
+    t.score = (t.score * 0.45) + (d.score * 0.55);
     t.velocity = velocity;
     t.predicted = { x: t.center.x + velocity.vx * 0.45, y: t.center.y + velocity.vy * 0.45 };
     t.lastSeenMs = nowMs;
+    t.missCount = 0;
+    t.hitCount = (t.hitCount || 0) + 1;
     t.trail.push(t.center);
     if (t.trail.length > 20) t.trail.shift();
+  });
+
+  active.forEach((t, idx) => {
+    if (usedT.has(idx)) return;
+    t.missCount = (t.missCount || 0) + 1;
+    const dt = Math.max(0.016, (nowMs - t.lastSeenMs) / 1000);
+    const projected = {
+      x: t.center.x + t.velocity.vx * Math.min(0.45, dt),
+      y: t.center.y + t.velocity.vy * Math.min(0.45, dt)
+    };
+    t.predicted = projected;
   });
 
   detections.forEach((d, idx) => {
@@ -412,12 +607,34 @@ function updateTracks(detections, nowMs) {
       velocity: { vx: 0, vy: 0 },
       predicted: { ...center },
       trail: [center],
-      lastSeenMs: nowMs
+      lastSeenMs: nowMs,
+      hitCount: 1,
+      missCount: 0
     });
     nextTrackId += 1;
   });
 
-  tracks = active;
+  tracks = active.filter((track) => nowMs - track.lastSeenMs < TRACK_TTL_MS && (track.missCount || 0) <= MAX_TRACK_MISSES);
+}
+
+async function tryRecoverDetector() {
+  if (detectorRecovering || !isRunning) return;
+  detectorRecovering = true;
+  cameraStatus.textContent = 'Reiniciando motor IA...';
+
+  try {
+    const replacement = new SenseCraftDetector();
+    await withTimeout(replacement.init(), MODEL_TIMEOUT_MS, 'timeout reiniciando motor IA');
+    detector = replacement;
+    detectorErrorStreak = 0;
+    liveEngine.textContent = detector.name;
+    visionRtStatus.textContent = detector.name === 'SenseCraft SDK' ? 'motor SenseCraft listo' : 'motor SenseCraft en modo compat (coco-ssd)';
+    cameraStatus.textContent = `Cámara activa | ${detector.name}`;
+  } catch {
+    cameraStatus.textContent = 'Motor IA inestable. Verifica conexión y recarga si persiste.';
+  } finally {
+    detectorRecovering = false;
+  }
 }
 
 function classifyRisk(ttc, pet, vRel, hasConflict) {
@@ -484,7 +701,9 @@ function updateMainRiskUi(metrics) {
   livePET.textContent = `${formatNum(metrics.pet)}s`;
   liveVRel.textContent = `${formatNum(metrics.vRel, 1)} px/s`;
 
-  if (metrics.risk === 'CRITICO') {
+  const now = Date.now();
+  if (metrics.risk === 'CRITICO' && now - lastCriticalAlertMs > CRITICAL_ALERT_COOLDOWN_MS) {
+    lastCriticalAlertMs = now;
     playBeep();
     speakAlert('¡Atención! Riesgo crítico detectado, ceda el paso al peatón.');
   }
@@ -733,6 +952,24 @@ function pushEventLine(text) {
   while (eventList.children.length > 40) eventList.removeChild(eventList.lastChild);
 }
 
+function renderConnectedDevices(payload) {
+  if (!devicesCount || !devicesList) return;
+  const total = Number(payload?.total) || 0;
+  const devices = Array.isArray(payload?.devices) ? payload.devices : [];
+  devicesCount.textContent = `${total} conectados`;
+
+  devicesList.innerHTML = devices
+    .map((item) => {
+      const name = item.displayName || 'Dispositivo';
+      const kind = item.kind || 'unknown';
+      const gps = item.gps && typeof item.gps.lat === 'number' && typeof item.gps.lng === 'number'
+        ? `${item.gps.lat.toFixed(5)}, ${item.gps.lng.toFixed(5)}`
+        : 'sin ubicación';
+      return `<div class="list-item"><b>${name}</b> · ${kind}<br/><span style="color:var(--muted)">${gps}</span></div>`;
+    })
+    .join('');
+}
+
 function mapToObjectsEnvelope(metrics) {
   const canvasSize = { width: cameraCanvas.width, height: cameraCanvas.height };
   const objects = tracks.map((t) => mapAdapter.mapTrack(t, canvasSize));
@@ -833,64 +1070,105 @@ async function emitRealtime(metrics, transform) {
 async function processFrame(now) {
   if (!isRunning || !detector) return;
 
-  if (now - frameClock < 90) {
-    requestAnimationFrame(processFrame);
-    return;
-  }
-
-  frameClock = now;
-  resizeCanvasToDisplay();
-  const transform = getVideoToCanvasTransform();
-
-  let baseDetections = [];
   try {
-    const rawDetections = await detector.detect(cameraVideo);
-    baseDetections = rawDetections.map((entry) => {
-      const vbox = toVideoPixelBbox(entry.bbox, transform.videoW, transform.videoH);
-      let cbox = videoBboxToCanvasBbox(vbox, transform);
-      let classType = normalizeClass(entry.class);
-      cbox = refineBboxForClass(classType, cbox);
-      cbox = clampBboxToCanvas(cbox);
-      return { classType, score: entry.score || 0, bbox: cbox };
+    if (now - frameClock < FRAME_INTERVAL_MS) {
+      return;
+    }
+
+    frameClock = now;
+    resizeCanvasToDisplay();
+    const transform = getVideoToCanvasTransform();
+
+    let baseDetections = [];
+    try {
+      const rawDetections = await detector.detect(cameraVideo);
+      baseDetections = rawDetections.map((entry) => {
+        const vbox = toVideoPixelBbox(entry.bbox, transform.videoW, transform.videoH);
+        let cbox = videoBboxToCanvasBbox(vbox, transform);
+        let classType = normalizeClass(entry.class);
+        cbox = refineBboxForClass(classType, cbox);
+        cbox = clampBboxToCanvas(cbox);
+        return { classType, score: entry.score || 0, bbox: cbox };
+      });
+      detectorErrorStreak = 0;
+    } catch {
+      baseDetections = [];
+      detectorErrorStreak += 1;
+      if (detectorErrorStreak >= DETECTOR_ERROR_LIMIT) {
+        detectorErrorStreak = 0;
+        tryRecoverDetector().catch(() => null);
+      }
+    }
+
+    let handDetections = cachedHandDetections;
+    if (now - lastHandDetectionMs > HAND_DETECTION_INTERVAL_MS) {
+      lastHandDetectionMs = now;
+      try {
+        handDetections = await detectHands(transform);
+        cachedHandDetections = handDetections;
+      } catch {
+        handDetections = cachedHandDetections;
+      }
+    }
+    const allDetections = filterAndDeduplicateDetections([...baseDetections, ...handDetections]);
+
+    if (now - lastAmbulanceScanMs > AMBULANCE_SCAN_INTERVAL_MS) {
+      lastAmbulanceScanMs = now;
+      const ambulanceCandidates = allDetections
+        .filter((det) => det.classType === 'automovil' || det.classType === 'bus_transcaribe')
+        .sort((a, b) => (b.bbox.w * b.bbox.h) - (a.bbox.w * a.bbox.h))
+        .slice(0, 2);
+
+      for (const det of ambulanceCandidates) {
+        try {
+          const isAmbulance = await detectAmbulanceHeuristic(det.bbox, transform);
+          if (isAmbulance) det.classType = 'ambulancia';
+        } catch {
+        }
+      }
+    }
+
+    updateTracks(allDetections, performance.now());
+
+    lastEmittedEvents = [];
+    tracks.forEach((t) => {
+      if ((t.hitCount || 0) < 2) return;
+      if (SPECIAL_EVENTS.has(t.classType)) {
+        const label = `${t.classType} detectado`;
+        addRealtimeBadge(label);
+        lastEmittedEvents.push({ type: t.classType, label, trackId: t.id });
+      }
     });
+
+    const metrics = computeRiskMetrics();
+    if (now - lastUiUpdateMs > UI_UPDATE_INTERVAL_MS) {
+      lastUiUpdateMs = now;
+      updateMainRiskUi(metrics);
+      const counters = updateKpisFromTracks();
+      renderVehicleTable(counters);
+      updateRealtimeCharts(counters, metrics);
+      renderObjectList();
+
+      cameraCtx.clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
+      tracks.forEach(drawTrack);
+      cameraStatus.textContent = `Cámara activa | ${detector.name} | Tracks: ${tracks.length}`;
+    }
+
+    if (now - lastRealtimeEmitMs > REALTIME_EMIT_INTERVAL_MS) {
+      lastRealtimeEmitMs = now;
+      emitRealtime(metrics, transform);
+    }
   } catch {
-    baseDetections = [];
-  }
-
-  const handDetections = await detectHands(transform);
-  const allDetections = [...baseDetections, ...handDetections];
-
-  for (const det of allDetections) {
-    if (det.classType === 'automovil' || det.classType === 'bus_transcaribe') {
-      const isAmbulance = await detectAmbulanceHeuristic(det.bbox, transform);
-      if (isAmbulance) det.classType = 'ambulancia';
+    detectorErrorStreak += 1;
+    if (detectorErrorStreak >= DETECTOR_ERROR_LIMIT) {
+      detectorErrorStreak = 0;
+      tryRecoverDetector().catch(() => null);
+    }
+  } finally {
+    if (isRunning) {
+      requestAnimationFrame(processFrame);
     }
   }
-
-  updateTracks(allDetections, performance.now());
-
-  lastEmittedEvents = [];
-  tracks.forEach((t) => {
-    if (SPECIAL_EVENTS.has(t.classType)) {
-      const label = `${t.classType} detectado`;
-      addRealtimeBadge(label);
-      lastEmittedEvents.push({ type: t.classType, label, trackId: t.id });
-    }
-  });
-
-  const metrics = computeRiskMetrics();
-  updateMainRiskUi(metrics);
-  const counters = updateKpisFromTracks();
-  renderVehicleTable(counters);
-  updateRealtimeCharts(counters, metrics);
-  renderObjectList();
-
-  cameraCtx.clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
-  tracks.forEach(drawTrack);
-
-  emitRealtime(metrics, transform);
-  cameraStatus.textContent = `Cámara activa | ${detector.name} | Tracks: ${tracks.length}`;
-  requestAnimationFrame(processFrame);
 }
 
 async function refreshStats() {}
@@ -928,6 +1206,146 @@ async function downloadCameraReport() {
   URL.revokeObjectURL(url);
 }
 
+function isLocalHost(hostname) {
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+function detectLanIpViaWebRtc(timeoutMs = 2200) {
+  return new Promise((resolve) => {
+    const RTC = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+    if (!RTC) {
+      resolve(null);
+      return;
+    }
+
+    const candidateIps = new Set();
+    const pc = new RTC({ iceServers: [] });
+    const timer = setTimeout(() => {
+      try { pc.close(); } catch {}
+      const selected = Array.from(candidateIps).find((ip) => /^192\.168\.|^10\.|^172\.(1[6-9]|2\d|3[0-1])\./.test(ip)) || null;
+      resolve(selected);
+    }, timeoutMs);
+
+    pc.createDataChannel('qr');
+    pc.onicecandidate = (event) => {
+      const candidate = event?.candidate?.candidate;
+      if (!candidate) return;
+      const match = candidate.match(/(\d{1,3}(?:\.\d{1,3}){3})/);
+      if (!match) return;
+      candidateIps.add(match[1]);
+    };
+
+    pc.createOffer()
+      .then((offer) => pc.setLocalDescription(offer))
+      .catch(() => null)
+      .finally(() => {
+        setTimeout(() => {
+          clearTimeout(timer);
+          try { pc.close(); } catch {}
+          const selected = Array.from(candidateIps).find((ip) => /^192\.168\.|^10\.|^172\.(1[6-9]|2\d|3[0-1])\./.test(ip)) || null;
+          resolve(selected);
+        }, 900);
+      });
+  });
+}
+
+function buildPrimaryQrUrl(lanIp) {
+  const { protocol, port, host } = window.location;
+
+  if (protocol === 'https:') {
+    return `https://${host}/viewer.html?qr=1`;
+  }
+
+  const safePort = port || '4000';
+  const selectedIp = normalizeLanIp(lanIp) || normalizeLanIp(PREFERRED_LAN_IP) || window.location.hostname;
+  return `${protocol}//${selectedIp}:${safePort}/viewer.html?qr=1`;
+}
+
+function normalizeLanIp(rawIp) {
+  const ip = String(rawIp || '').trim();
+  const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if (!ipv4Pattern.test(ip)) return null;
+  const parts = ip.split('.').map((p) => Number(p));
+  if (parts.some((p) => Number.isNaN(p) || p < 0 || p > 255)) return null;
+  return ip;
+}
+
+function renderQrGraphic(targetId, text) {
+  const container = document.getElementById(targetId);
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (window.QRCode) {
+    new window.QRCode(container, {
+      text,
+      width: 210,
+      height: 210,
+      colorDark: '#111827',
+      colorLight: '#ffffff',
+      correctLevel: window.QRCode.CorrectLevel ? window.QRCode.CorrectLevel.M : undefined
+    });
+    return;
+  }
+
+  const fallbackImg = document.createElement('img');
+  fallbackImg.alt = 'QR de enlace';
+  fallbackImg.width = 210;
+  fallbackImg.height = 210;
+  fallbackImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=210x210&data=${encodeURIComponent(text)}`;
+  container.appendChild(fallbackImg);
+}
+
+async function renderQrLinks() {
+  if (!qrLinkBox) return;
+
+  const lanIp = await detectLanIpViaWebRtc();
+  const fallbackPrimary = buildPrimaryQrUrl(lanIp);
+
+  let primary = fallbackPrimary;
+  try {
+    const response = await fetch(`${API_BASE}/network-qr`);
+    const payload = await response.json();
+    if (typeof payload?.primary === 'string' && payload.primary.length > 0) {
+      primary = payload.primary;
+    }
+  } catch {
+  }
+
+  const isSecureQr = primary.startsWith('https://');
+  const securityNote = isSecureQr
+    ? '✅ QR seguro (HTTPS): geolocalización habilitada en móviles compatibles.'
+    : '⚠️ QR no seguro (HTTP): muchos móviles bloquean ubicación. Abre el dashboard en HTTPS para generar QR seguro.';
+  const securityColor = isSecureQr ? '#22c55e' : '#f59e0b';
+
+  qrLinkBox.style.display = 'block';
+  qrLinkBox.innerHTML = `
+    <h4 style="margin:0 0 8px 0;">QR multi-dispositivo</h4>
+    <div style="font-size:.9rem; color:var(--muted); margin-bottom:8px;">Escanea este QR desde tu celular para abrir el visor.</div>
+    <div style="font-size:.85rem; color:${securityColor}; margin-bottom:8px; font-weight:600;">${securityNote}</div>
+    <div id="qrCodeCanvas" style="margin:0 0 10px 0; display:flex; justify-content:center;"></div>
+    <div style="word-break:break-all; margin-bottom:8px;"><b id="qrPrimaryText">${primary}</b></div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+      <button id="btnCopyQrLink">Copiar enlace</button>
+    </div>
+    <div style="font-size:.82rem; color:var(--muted);">Único enlace configurado: ${primary}</div>
+  `;
+
+  renderQrGraphic('qrCodeCanvas', primary);
+
+  const copyBtn = document.getElementById('btnCopyQrLink');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(primary);
+        addRealtimeBadge('Enlace QR copiado');
+        pushEventLine(`${new Date().toLocaleTimeString()} | Enlace QR copiado | ${CAMERA_ID}`);
+      } catch {
+        pushEventLine(`${new Date().toLocaleTimeString()} | No se pudo copiar enlace QR | ${CAMERA_ID}`);
+      }
+    });
+  }
+}
+
 function stopCameraMode() {
   isRunning = false;
   if (cameraStream) {
@@ -936,6 +1354,9 @@ function stopCameraMode() {
   }
   cameraVideo.srcObject = null;
   tracks = [];
+  detectorErrorStreak = 0;
+  detectorRecovering = false;
+  cachedHandDetections = [];
   cameraCtx.clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
   cameraStatus.textContent = 'Cámara apagada.';
 }
@@ -943,6 +1364,9 @@ function stopCameraMode() {
 async function startCameraMode() {
   ensureSecureContext();
   await detectLocation();
+  await ensureVisionDependencies();
+  detectorErrorStreak = 0;
+  detectorRecovering = false;
 
   cameraStatus.textContent = 'Solicitando cámara...';
   cameraStream = await withTimeout(
@@ -990,6 +1414,10 @@ function wireUi() {
     downloadCameraReport().catch(() => null);
   });
 
+  document.getElementById('btnShowQrLink').addEventListener('click', () => {
+    renderQrLinks().catch(() => null);
+  });
+
   document.getElementById('btnCsv').addEventListener('click', () => {
     window.open(`${API_BASE}/export/csv`, '_blank');
   });
@@ -1002,6 +1430,7 @@ function wireUi() {
     const label = 'QR simulado';
     addRealtimeBadge(label);
     lastEmittedEvents.push({ type: 'qr', label, at: new Date().toISOString() });
+    startFenceRealtimeSync('qr_button');
     pushEventLine(`${new Date().toLocaleTimeString()} | QR simulado | ${CAMERA_ID}`);
   };
 
@@ -1012,11 +1441,15 @@ function wireUi() {
 }
 
 socket.on('connect', () => {
-  visionRtStatus.textContent = 'Socket conectado en localhost:4000 (modo unificado).';
+  visionRtStatus.textContent = `Socket conectado en ${window.location.host} (modo unificado).`;
+  socket.emit('device_hello', {
+    displayName: 'Dashboard Web',
+    kind: 'dashboard'
+  });
 });
 
 socket.on('disconnect', () => {
-  visionRtStatus.textContent = 'Socket desconectado. Verifica localhost:4000';
+  visionRtStatus.textContent = `Socket desconectado. Verifica ${window.location.host}`;
 });
 
 socket.on('snapshot', (snapshot) => {
@@ -1042,6 +1475,50 @@ socket.on('objects_update', (envelope) => {
   }
 });
 
+socket.on('fence_update', (payload) => {
+  if (!payload) return;
+  if (window.updateMapFence) {
+    window.updateMapFence(payload);
+  }
+
+  if (payload.triggeredBy === socket.id) {
+    fenceOwnedByThisClient = !!payload.active;
+  }
+
+  if (!payload.active && fenceSyncTimer) {
+    clearInterval(fenceSyncTimer);
+    fenceSyncTimer = null;
+    fenceOwnedByThisClient = false;
+  }
+
+  const now = Date.now();
+  const eventType = payload.active ? 'on' : 'off';
+  const signature = `${eventType}:${payload.cameraId || 'cam'}`;
+  if (signature === lastFenceNotice && now - lastFenceNoticeMs < 4000) return;
+  lastFenceNotice = signature;
+  lastFenceNoticeMs = now;
+
+  if (payload.active) {
+    addRealtimeBadge('Cerca invisible activa');
+    pushEventLine(`${new Date(payload.triggeredAt || Date.now()).toLocaleTimeString()} | Cerca 50m activa | ${payload.cameraId || 'cam'}`);
+  } else {
+    pushEventLine(`${new Date(payload.triggeredAt || Date.now()).toLocaleTimeString()} | Cerca invisible desactivada | ${payload.cameraId || 'cam'}`);
+  }
+});
+
+socket.on('devices_update', (payload) => {
+  renderConnectedDevices(payload);
+});
+
+if (urlParams.get('qr') === '1') {
+  setTimeout(() => {
+    addRealtimeBadge('QR escaneado');
+    lastEmittedEvents.push({ type: 'qr_scan', label: 'QR escaneado', at: new Date().toISOString() });
+    startFenceRealtimeSync('qr_scan_url');
+    pushEventLine(`${new Date().toLocaleTimeString()} | QR escaneado | ${CAMERA_ID}`);
+  }, 1200);
+}
+
 setInterval(() => {
   const msg = messages[Math.floor(Math.random() * messages.length)];
   document.getElementById('ansvMessage').textContent = msg;
@@ -1050,6 +1527,14 @@ setInterval(() => {
 window.initMap();
 wireUi();
 detectLocation().catch(() => null);
+startLocationWatch();
+renderQrLinks().catch(() => null);
 refreshStats().catch(() => null);
+cameraStatus.textContent = 'Listo. Presiona "Abrir cámara PC (IA)" para iniciar detección.';
 
-startCameraMode().catch(showStartupError);
+window.addEventListener('beforeunload', () => {
+  stopLocationWatch();
+  if (fenceOwnedByThisClient) {
+    stopFenceRealtimeSync('disconnect');
+  }
+});
