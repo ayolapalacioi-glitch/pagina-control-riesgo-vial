@@ -21,6 +21,7 @@ const zeroTotals = (): Totals => ({
   peaton: 0,
   peaton_aereo: 0,
   movimiento_peaton: 0,
+  cebra: 0,
   motocicleta: 0,
   automovil: 0,
   bus_transcaribe: 0,

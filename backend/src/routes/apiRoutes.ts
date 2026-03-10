@@ -36,6 +36,7 @@ export function buildApiRoutes(io: Server) {
           automovil: counts.automovil,
           bus_transcaribe: counts.bus_transcaribe,
           ciclista: counts.ciclista,
+          cebra: counts.cebra,
           full: counts.full
         },
         risk_event: event
@@ -75,6 +76,7 @@ export function buildApiRoutes(io: Server) {
           automovil: counts.automovil,
           bus_transcaribe: counts.bus_transcaribe,
           ciclista: counts.ciclista,
+          cebra: counts.cebra,
           full: counts.full
         },
         risk_event: event

@@ -13,6 +13,7 @@ function buildCounts(tracks) {
         automovil: counts.automovil,
         bus_transcaribe: counts.bus_transcaribe,
         ciclista: counts.ciclista,
+        cebra: counts.cebra,
         full: counts
     };
 }

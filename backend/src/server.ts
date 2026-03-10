@@ -51,6 +51,7 @@ createMqttClient(async (_topic, rawMessage) => {
         automovil: counts.automovil,
         bus_transcaribe: counts.bus_transcaribe,
         ciclista: counts.ciclista,
+        cebra: counts.cebra,
         full: counts.full
       },
       risk_event: event

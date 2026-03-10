@@ -9,6 +9,7 @@
     autobús: '#ff8a5b',
     motocicleta: '#ff5f5f',
     bicicleta: '#4fb5ff',
+    cebra: '#f8fafc',
     'señal de paso': '#e6e6e6',
     animal: '#bf8bff',
     ambulancia: '#7de3ff',
@@ -18,15 +19,28 @@
   const ANIMAL_CLASSES = new Set(['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe']);
   const CLASS_MAP = {
     person: 'peatón',
+    pedestrian: 'peatón',
+    human: 'peatón',
+    people: 'peatón',
     car: 'vehículo',
+    auto: 'vehículo',
+    automobile: 'vehículo',
+    vehicle: 'vehículo',
     truck: 'vehículo',
     bus: 'autobús',
     motorcycle: 'motocicleta',
+    motorbike: 'motocicleta',
+    scooter: 'motocicleta',
     bicycle: 'bicicleta',
+    bike: 'bicicleta',
+    crosswalk: 'cebra',
+    zebra_crossing: 'cebra',
+    zebra: 'cebra',
+    'zebra crossing': 'cebra',
     stop_sign: 'señal de paso'
   };
 
-  const SPECIAL_EVENTS = new Set(['autobús', 'bicicleta', 'señal de paso', 'animal', 'ambulancia', 'gesto']);
+  const SPECIAL_EVENTS = new Set(['autobús', 'bicicleta', 'señal de paso', 'cebra', 'animal', 'ambulancia', 'gesto']);
 
   const ui = {
     banner: document.getElementById('banner'),
@@ -62,6 +76,13 @@
   let frameClock = 0;
   let lastEvents = [];
   const eventCooldown = new Map();
+  const crosswalkState = {
+    polygon: null,
+    confidence: 0,
+    lastSeenMs: 0,
+    lastAnalyzedMs: 0
+  };
+  const CROSSWALK_ANALYZE_INTERVAL_MS = 450;
 
   function setBanner(message, isError = false) {
     ui.banner.textContent = message;
@@ -152,6 +173,13 @@
     };
   }
 
+  function videoPointToCanvas(point, transform) {
+    return {
+      x: point.x * transform.scale + transform.offsetX,
+      y: point.y * transform.scale + transform.offsetY
+    };
+  }
+
   function toVideoPixelBbox(bbox, videoW, videoH) {
     if (!bbox) {
       return { x: 0, y: 0, w: 0, h: 0 };
@@ -232,6 +260,254 @@
     const dx = a.x - b.x;
     const dy = a.y - b.y;
     return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function centroidOfPolygon(polygon) {
+    if (!Array.isArray(polygon) || polygon.length === 0) {
+      return { x: 0, y: 0 };
+    }
+    const sum = polygon.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), { x: 0, y: 0 });
+    return { x: sum.x / polygon.length, y: sum.y / polygon.length };
+  }
+
+  function pointInPolygon(point, polygon) {
+    if (!Array.isArray(polygon) || polygon.length < 3) {
+      return false;
+    }
+
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+      const xi = polygon[i].x;
+      const yi = polygon[i].y;
+      const xj = polygon[j].x;
+      const yj = polygon[j].y;
+      const intersects = ((yi > point.y) !== (yj > point.y))
+        && (point.x < ((xj - xi) * (point.y - yi)) / Math.max(1e-6, (yj - yi)) + xi);
+
+      if (intersects) {
+        inside = !inside;
+      }
+    }
+
+    return inside;
+  }
+
+  function distancePointToSegment(point, a, b) {
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const apx = point.x - a.x;
+    const apy = point.y - a.y;
+    const mag2 = abx * abx + aby * aby;
+    const t = mag2 <= 1e-6 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / mag2));
+    const proj = { x: a.x + t * abx, y: a.y + t * aby };
+    return distance(point, proj);
+  }
+
+  function distancePointToPolygon(point, polygon) {
+    if (!Array.isArray(polygon) || polygon.length < 3) {
+      return Infinity;
+    }
+
+    let minDist = Infinity;
+    for (let i = 0; i < polygon.length; i += 1) {
+      const a = polygon[i];
+      const b = polygon[(i + 1) % polygon.length];
+      minDist = Math.min(minDist, distancePointToSegment(point, a, b));
+    }
+    return minDist;
+  }
+
+  function smoothPolygon(nextPolygon) {
+    if (!crosswalkState.polygon || crosswalkState.polygon.length !== nextPolygon.length) {
+      return nextPolygon;
+    }
+    return nextPolygon.map((point, index) => ({
+      x: crosswalkState.polygon[index].x * 0.6 + point.x * 0.4,
+      y: crosswalkState.polygon[index].y * 0.6 + point.y * 0.4
+    }));
+  }
+
+  function detectCrosswalkFromTopView(transform, nowMs) {
+    if (nowMs - crosswalkState.lastAnalyzedMs < CROSSWALK_ANALYZE_INTERVAL_MS) {
+      return;
+    }
+    crosswalkState.lastAnalyzedMs = nowMs;
+
+    const sampleW = 220;
+    const sampleH = 132;
+    cropCanvas.width = sampleW;
+    cropCanvas.height = sampleH;
+    cropCtx.drawImage(ui.video, 0, 0, transform.videoW, transform.videoH, 0, 0, sampleW, sampleH);
+
+    const pixels = cropCtx.getImageData(0, 0, sampleW, sampleH).data;
+    const yStart = Math.floor(sampleH * 0.3);
+    const yEnd = Math.floor(sampleH * 0.95);
+    const roiH = Math.max(1, yEnd - yStart);
+
+    const colScores = new Array(sampleW).fill(0);
+    for (let x = 0; x < sampleW; x += 1) {
+      let white = 0;
+      for (let y = yStart; y < yEnd; y += 1) {
+        const idx = (y * sampleW + x) * 4;
+        const r = pixels[idx];
+        const g = pixels[idx + 1];
+        const b = pixels[idx + 2];
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        if (luma > 165 && max - min < 70) {
+          white += 1;
+        }
+      }
+      colScores[x] = white / roiH;
+    }
+
+    const stripeRuns = [];
+    let start = -1;
+    for (let x = 0; x < sampleW; x += 1) {
+      if (colScores[x] > 0.32) {
+        if (start < 0) start = x;
+      } else if (start >= 0) {
+        if (x - start >= 2) {
+          stripeRuns.push({ start, end: x - 1 });
+        }
+        start = -1;
+      }
+    }
+    if (start >= 0 && sampleW - start >= 2) {
+      stripeRuns.push({ start, end: sampleW - 1 });
+    }
+
+    if (stripeRuns.length < 4) {
+      return;
+    }
+
+    const centers = stripeRuns.map((run) => (run.start + run.end) / 2);
+    const gaps = centers.slice(1).map((center, idx) => center - centers[idx]);
+    const meanGap = gaps.reduce((acc, gap) => acc + gap, 0) / Math.max(1, gaps.length);
+    const variance = gaps.reduce((acc, gap) => acc + (gap - meanGap) * (gap - meanGap), 0) / Math.max(1, gaps.length);
+    const stdGap = Math.sqrt(variance);
+    const consistency = 1 - Math.min(1, stdGap / Math.max(1, meanGap));
+
+    if (consistency < 0.22) {
+      return;
+    }
+
+    const xMin = Math.max(0, stripeRuns[0].start - 2);
+    const xMax = Math.min(sampleW - 1, stripeRuns[stripeRuns.length - 1].end + 2);
+
+    let yMin = sampleH - 1;
+    let yMax = 0;
+    for (let y = yStart; y < yEnd; y += 1) {
+      let whiteInRow = 0;
+      for (let x = xMin; x <= xMax; x += 1) {
+        const idx = (y * sampleW + x) * 4;
+        const r = pixels[idx];
+        const g = pixels[idx + 1];
+        const b = pixels[idx + 2];
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+        if (luma > 165 && max - min < 70) {
+          whiteInRow += 1;
+        }
+      }
+      const rowRatio = whiteInRow / Math.max(1, xMax - xMin + 1);
+      if (rowRatio > 0.18) {
+        yMin = Math.min(yMin, y);
+        yMax = Math.max(yMax, y);
+      }
+    }
+
+    if (yMax - yMin < 12) {
+      return;
+    }
+
+    const sx = transform.videoW / sampleW;
+    const sy = transform.videoH / sampleH;
+    const polygon = [
+      { x: xMin * sx, y: yMin * sy },
+      { x: xMax * sx, y: yMin * sy },
+      { x: xMax * sx, y: yMax * sy },
+      { x: xMin * sx, y: yMax * sy }
+    ];
+
+    const confidence = Math.min(0.98, 0.4 + Math.min(0.45, stripeRuns.length * 0.05) + consistency * 0.25);
+    crosswalkState.polygon = smoothPolygon(polygon);
+    crosswalkState.confidence = confidence;
+    crosswalkState.lastSeenMs = nowMs;
+  }
+
+  function getCrosswalkPolygonForFrame(videoW, videoH) {
+    if (crosswalkState.polygon && Date.now() - crosswalkState.lastSeenMs < 2500 && crosswalkState.confidence > 0.45) {
+      return crosswalkState.polygon;
+    }
+    return [
+      { x: videoW * 0.34, y: videoH * 0.53 },
+      { x: videoW * 0.66, y: videoH * 0.53 },
+      { x: videoW * 0.74, y: videoH * 0.9 },
+      { x: videoW * 0.26, y: videoH * 0.9 }
+    ];
+  }
+
+  function drawCrosswalkOverlay(transform) {
+    if (!crosswalkState.polygon || Date.now() - crosswalkState.lastSeenMs > 2500) {
+      return;
+    }
+
+    const canvasPolygon = crosswalkState.polygon.map((point) => videoPointToCanvas(point, transform));
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+    ctx.fillStyle = 'rgba(125,211,252,0.16)';
+    ctx.setLineDash([8, 6]);
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    canvasPolygon.forEach((point, index) => {
+      if (index === 0) ctx.moveTo(point.x, point.y);
+      else ctx.lineTo(point.x, point.y);
+    });
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    const labelX = Math.min(...canvasPolygon.map((point) => point.x));
+    const labelY = Math.max(14, Math.min(...canvasPolygon.map((point) => point.y)) - 8);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#dbeafe';
+    ctx.font = '12px Segoe UI';
+    ctx.fillText(`cebra superior (${Math.round(crosswalkState.confidence * 100)}%)`, labelX, labelY);
+    ctx.restore();
+  }
+
+  function isTrackRelevantToCrosswalk(track, polygon) {
+    if (!polygon) {
+      return false;
+    }
+    if (pointInPolygon(track.center, polygon)) {
+      return true;
+    }
+    const margin = Math.max(36, Math.max(track.bbox.w, track.bbox.h) * 0.55);
+    return distancePointToPolygon(track.center, polygon) <= margin;
+  }
+
+  function isHeadingToCrosswalk(track, polygon) {
+    if (!polygon) {
+      return false;
+    }
+    const speed = speedPxPerSec(track.velocity);
+    if (speed < 1) {
+      return false;
+    }
+
+    const centroid = centroidOfPolygon(polygon);
+    const future = {
+      x: track.center.x + track.velocity.vx * 0.8,
+      y: track.center.y + track.velocity.vy * 0.8
+    };
+
+    return distance(future, centroid) + 5 < distance(track.center, centroid);
   }
 
   function speedPxPerSec(velocity) {
@@ -446,14 +722,22 @@
   function computeRiskMetrics() {
     const pedestrians = tracks.filter((track) => track.classType === 'peatón');
     const threats = tracks.filter((track) => ['vehículo', 'autobús', 'motocicleta', 'bicicleta', 'ambulancia'].includes(track.classType));
+    const crosswalkPolygon = getCrosswalkPolygonForFrame(ui.video.videoWidth || 1, ui.video.videoHeight || 1);
+    const hasDynamicCrosswalk = Boolean(crosswalkState.polygon && Date.now() - crosswalkState.lastSeenMs < 2500 && crosswalkState.confidence > 0.45);
 
-    if (!pedestrians.length || !threats.length) {
+    const pedestriansNearCrosswalk = pedestrians.filter((track) => isTrackRelevantToCrosswalk(track, crosswalkPolygon));
+    const threatsNearCrosswalk = threats.filter((track) => isTrackRelevantToCrosswalk(track, crosswalkPolygon) || isHeadingToCrosswalk(track, crosswalkPolygon));
+
+    const riskPedestrians = pedestriansNearCrosswalk.length ? pedestriansNearCrosswalk : pedestrians;
+    const riskThreats = threatsNearCrosswalk.length ? threatsNearCrosswalk : threats;
+
+    if (!riskPedestrians.length || !riskThreats.length) {
       return { risk: 'Bajo', ttc: Infinity, pet: Infinity, vRel: 0 };
     }
 
     let bestPair = null;
-    for (const p of pedestrians) {
-      for (const v of threats) {
+    for (const p of riskPedestrians) {
+      for (const v of riskThreats) {
         const d = distance(p.center, v.center);
         if (!bestPair || d < bestPair.d) {
           bestPair = { p, v, d };
@@ -474,7 +758,10 @@
     const tp = distance(bestPair.p.center, midPoint) / Math.max(1, vPed);
     const tv = distance(bestPair.v.center, midPoint) / Math.max(1, vVeh);
     const pet = Math.abs(tp - tv);
-    const risk = classifyRisk(ttc, pet, vRel, true);
+    const hasConflict = hasDynamicCrosswalk
+      ? (pedestriansNearCrosswalk.length > 0 && threatsNearCrosswalk.length > 0)
+      : true;
+    const risk = classifyRisk(ttc, pet, vRel, hasConflict);
 
     return { risk, ttc, pet, vRel };
   }
@@ -688,6 +975,8 @@
     const handDetections = await detectHands(transform);
     const allDetections = [...baseDetections, ...handDetections];
 
+    detectCrosswalkFromTopView(transform, performance.now());
+
     for (const det of allDetections) {
       if (det.classType === 'vehículo' || det.classType === 'autobús') {
         const isAmbulance = await detectAmbulanceHeuristic(det.bbox, transform);
@@ -700,6 +989,11 @@
     updateTracks(allDetections, performance.now());
 
     lastEvents = [];
+    if (crosswalkState.polygon && Date.now() - crosswalkState.lastSeenMs < 2500 && crosswalkState.confidence > 0.45) {
+      const zebraEvent = 'cebra detectada (vista superior)';
+      addBadge(zebraEvent);
+      lastEvents.push({ type: 'cebra', label: zebraEvent, confidence: Number(crosswalkState.confidence.toFixed(2)) });
+    }
     tracks.forEach((track) => {
       if (SPECIAL_EVENTS.has(track.classType)) {
         const eventName = `${track.classType} detectado`;
@@ -713,6 +1007,7 @@
     renderObjectsList();
 
     ctx.clearRect(0, 0, ui.overlay.width, ui.overlay.height);
+    drawCrosswalkOverlay(transform);
     tracks.forEach(drawTrack);
 
     emitSocketPayload(metrics);

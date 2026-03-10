@@ -2,6 +2,7 @@ export const ALL_ACTOR_CLASSES = [
   'peaton',
   'peaton_aereo',
   'movimiento_peaton',
+  'cebra',
   'motocicleta',
   'automovil',
   'bus_transcaribe',

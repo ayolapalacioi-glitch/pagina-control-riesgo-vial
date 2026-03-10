@@ -14,6 +14,7 @@ export function buildCounts(tracks: TrackedActor[]) {
     automovil: counts.automovil,
     bus_transcaribe: counts.bus_transcaribe,
     ciclista: counts.ciclista,
+    cebra: counts.cebra,
     full: counts
   };
 }

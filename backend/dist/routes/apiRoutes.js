@@ -38,6 +38,7 @@ function buildApiRoutes(io) {
                     automovil: counts.automovil,
                     bus_transcaribe: counts.bus_transcaribe,
                     ciclista: counts.ciclista,
+                    cebra: counts.cebra,
                     full: counts.full
                 },
                 risk_event: event
@@ -74,6 +75,7 @@ function buildApiRoutes(io) {
                     automovil: counts.automovil,
                     bus_transcaribe: counts.bus_transcaribe,
                     ciclista: counts.ciclista,
+                    cebra: counts.cebra,
                     full: counts.full
                 },
                 risk_event: event
