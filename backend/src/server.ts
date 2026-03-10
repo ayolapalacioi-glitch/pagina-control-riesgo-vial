@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
+import https from 'https';
 import { Server } from 'socket.io';
 import path from 'path';
 import os from 'os';
@@ -62,8 +63,16 @@ function emitDevicesUpdate() {
 }
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
+
+const CERT_PATH = path.resolve(process.cwd(), '../certs/server.crt');
+const KEY_PATH  = path.resolve(process.cwd(), '../certs/server.key');
+const certExists = fs.existsSync(CERT_PATH) && fs.existsSync(KEY_PATH);
+
+const server = certExists
+  ? https.createServer({ cert: fs.readFileSync(CERT_PATH), key: fs.readFileSync(KEY_PATH) }, app)
+  : http.createServer(app);
+
+const io = new Server(server as Parameters<typeof Server>[0], {
   cors: {
     origin: env.frontendOrigin
   }
@@ -75,17 +84,36 @@ app.use('/data', express.static(path.resolve(process.cwd(), '../data')));
 app.use('/', express.static(path.resolve(process.cwd(), '../frontend')));
 app.use('/vision', express.static(path.resolve(process.cwd(), '../vision-rt')));
 
-function getLocaltunnelPublicUrl(): string | null {
+function getPublicTunnelUrl(): string | null {
   try {
-    const logPath = path.resolve(process.cwd(), '../.tmp/localtunnel.out.log');
-    if (!fs.existsSync(logPath)) return null;
+    const tmpDir = path.resolve(process.cwd(), '../.tmp');
 
-    const content = fs.readFileSync(logPath, 'utf8');
-    const match = content.match(/https:\/\/[^\s]+\.loca\.lt/i);
-    return match ? match[0] : null;
+    // 1. Archivo genérico escrito por cualquier script de túnel
+    const urlFile = path.join(tmpDir, 'public_url.txt');
+    if (fs.existsSync(urlFile)) {
+      const url = fs.readFileSync(urlFile, 'utf8').trim();
+      if (url.startsWith('https://')) return url;
+    }
+
+    // 2. Log de cloudflared (stderr)
+    const cfLog = path.join(tmpDir, 'cloudflared.err.log');
+    if (fs.existsSync(cfLog)) {
+      const content = fs.readFileSync(cfLog, 'utf8');
+      const match = content.match(/https:\/\/[a-z0-9\-]+\.trycloudflare\.com/i);
+      if (match) return match[0];
+    }
+
+    // 3. Log de localtunnel (legado)
+    const ltLog = path.join(tmpDir, 'localtunnel.out.log');
+    if (fs.existsSync(ltLog)) {
+      const content = fs.readFileSync(ltLog, 'utf8');
+      const match = content.match(/https:\/\/[^\s]+\.loca\.lt/i);
+      if (match) return match[0];
+    }
   } catch {
-    return null;
+    // ignorar
   }
+  return null;
 }
 
 app.get('/api/network-qr', (req, res) => {
@@ -99,27 +127,30 @@ app.get('/api/network-qr', (req, res) => {
     secureUrls.add(`${envPublicBase.replace(/\/$/, '')}/viewer.html?qr=1`);
   }
 
-  const localtunnelBase = getLocaltunnelPublicUrl();
-  if (localtunnelBase) {
-    secureUrls.add(`${localtunnelBase.replace(/\/$/, '')}/viewer.html?qr=1`);
+  const tunnelBase = getPublicTunnelUrl();
+  if (tunnelBase) {
+    secureUrls.add(`${tunnelBase.replace(/\/$/, '')}/viewer.html?qr=1`);
   }
+
+  const localProtocol = certExists ? 'https' : 'http';
 
   Object.values(interfaces).forEach((entries) => {
     (entries || []).forEach((entry) => {
       if (!entry || entry.family !== 'IPv4' || entry.internal) return;
-      urls.add(`http://${entry.address}:${port}/viewer.html?qr=1`);
+      urls.add(`${localProtocol}://${entry.address}:${port}/viewer.html?qr=1`);
     });
   });
 
   const host = req.headers.host;
   if (typeof host === 'string' && host.length > 0) {
-    urls.add(`http://${host}/viewer.html?qr=1`);
+    const proto = req.secure || certExists ? 'https' : 'http';
+    urls.add(`${proto}://${host}/viewer.html?qr=1`);
   }
 
   const allUrls = [...Array.from(secureUrls), ...Array.from(urls)];
 
   res.json({
-    primary: allUrls[0] || `http://localhost:${port}/viewer.html?qr=1`,
+    primary: allUrls[0] || `${certExists ? 'https' : 'http'}://localhost:${port}/viewer.html?qr=1`,
     urls: allUrls,
     hasSecure: secureUrls.size > 0
   });
@@ -301,5 +332,35 @@ io.on('connection', (socket) => {
 });
 
 server.listen(env.port, () => {
-  console.log(`Backend activo en http://0.0.0.0:${env.port} (acceso por IP de red o dominio)`);
+  const protocol = certExists ? 'https' : 'http';
+  const port = env.port;
+
+  // Recopilar IPs de red (LAN_IP env tiene prioridad)
+  const lanIpEnv = (process.env.LAN_IP || '').trim();
+  const networkIps: string[] = [];
+  if (lanIpEnv) networkIps.push(lanIpEnv);
+  Object.values(os.networkInterfaces()).forEach((entries) => {
+    (entries || []).forEach((e) => {
+      if (e && e.family === 'IPv4' && !e.internal && e.address !== lanIpEnv) {
+        networkIps.push(e.address);
+      }
+    });
+  });
+
+  const sep = '─'.repeat(52);
+  console.log(`\n${sep}`);
+  console.log(`  Sistema de Seguridad Vial - Backend listo`);
+  console.log(sep);
+  console.log(`  Dashboard : ${protocol}://${networkIps[0] || 'localhost'}:${port}`);
+  console.log(`  Viewer QR : ${protocol}://${networkIps[0] || 'localhost'}:${port}/viewer.html?qr=1`);
+  if (networkIps.length > 1) {
+    networkIps.slice(1).forEach((ip) => {
+      console.log(`  Alt       : ${protocol}://${ip}:${port}`);
+    });
+  }
+  if (certExists) {
+    console.log(`\n  [HTTPS] Primera vez: abre la URL en el navegador`);
+    console.log(`          y acepta el certificado (Avanzado > Continuar).`);
+  }
+  console.log(`${sep}\n`);
 });

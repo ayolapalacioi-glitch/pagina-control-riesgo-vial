@@ -6,99 +6,106 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-function Get-PublicUrlFromLog {
-  param([string]$LogPath)
-  if (-not (Test-Path $LogPath)) { return $null }
+# ─── Buscar o descargar cloudflared ──────────────────────────────────────────
+function Get-CloudflaredExe {
+  # 1. Ya en PATH
+  $found = Get-Command 'cloudflared' -ErrorAction SilentlyContinue
+  if ($found) { return $found.Source }
 
-  $lines = Get-Content -Path $LogPath -ErrorAction SilentlyContinue
-  foreach ($line in $lines) {
-    if ($line -match 'your url is:\s*(https?://\S+)') {
-      return $matches[1]
+  # 2. Junto al script
+  $local = Join-Path $PSScriptRoot 'cloudflared.exe'
+  if (Test-Path $local) { return $local }
+
+  # 3. Descargar automáticamente
+  Write-Host '[cloudflared] No encontrado. Descargando...' -ForegroundColor DarkYellow
+  $url  = 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe'
+  Invoke-WebRequest -Uri $url -OutFile $local -UseBasicParsing
+  Write-Host "[cloudflared] Descargado en: $local" -ForegroundColor DarkGreen
+  return $local
+}
+
+function Get-CloudflareUrl {
+  param([string]$LogPath, [int]$TimeoutSec = 60)
+  $deadline = (Get-Date).AddSeconds($TimeoutSec)
+  while ((Get-Date) -lt $deadline) {
+    if (Test-Path $LogPath) {
+      $content = Get-Content $LogPath -Raw -ErrorAction SilentlyContinue
+      if ($content -match 'https://[a-z0-9\-]+\.trycloudflare\.com') {
+        return $matches[0]
+      }
     }
+    Start-Sleep -Seconds 1
   }
   return $null
 }
 
-function Get-LocalTunnelPassword {
-  try {
-    $resp = Invoke-WebRequest -Uri 'https://loca.lt/mytunnelpassword' -UseBasicParsing -TimeoutSec 15
-    if ($resp -and $resp.Content) {
-      return $resp.Content.Trim()
-    }
-  }
-  catch {
-  }
-  return $null
-}
-
+# ─── Main ─────────────────────────────────────────────────────────────────────
 $workspaceRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $workspaceRoot
 
 try {
   if (-not $NoDocker) {
-    Write-Host '[1/3] Iniciando contenedores...' -ForegroundColor Cyan
+    Write-Host '[1/3] Iniciando contenedores Docker...' -ForegroundColor Cyan
     docker compose up -d | Out-Host
   }
 
   $tmpDir = Join-Path $workspaceRoot '.tmp'
   New-Item -Path $tmpDir -ItemType Directory -Force | Out-Null
 
-  $outLog = Join-Path $tmpDir 'localtunnel.out.log'
-  $errLog = Join-Path $tmpDir 'localtunnel.err.log'
-  $pidFile = Join-Path $tmpDir 'localtunnel.pid'
-
+  $outLog = Join-Path $tmpDir 'cloudflared.out.log'
+  $errLog = Join-Path $tmpDir 'cloudflared.err.log'
+  $pidFile = Join-Path $tmpDir 'cloudflared.pid'
   Remove-Item $outLog, $errLog, $pidFile -ErrorAction SilentlyContinue
 
-  Write-Host '[2/3] Levantando túnel HTTPS...' -ForegroundColor Cyan
-  $ltProcess = Start-Process -FilePath 'npx.cmd' `
-    -ArgumentList @('--yes', 'localtunnel', '--port', "$Port") `
+  $cfExe = Get-CloudflaredExe
+
+  Write-Host '[2/3] Levantando tunel HTTPS (Cloudflare)...' -ForegroundColor Cyan
+  $cfProcess = Start-Process -FilePath $cfExe `
+    -ArgumentList @('tunnel', '--url', "http://localhost:$Port", '--no-autoupdate') `
     -RedirectStandardOutput $outLog `
-    -RedirectStandardError $errLog `
+    -RedirectStandardError  $errLog `
     -PassThru `
     -WindowStyle Hidden
 
-  Set-Content -Path $pidFile -Value $ltProcess.Id
+  Set-Content -Path $pidFile -Value $cfProcess.Id
 
-  $deadline = (Get-Date).AddSeconds(50)
-  $publicUrl = $null
-  while ((Get-Date) -lt $deadline) {
-    if ($ltProcess.HasExited) { break }
-    $publicUrl = Get-PublicUrlFromLog -LogPath $outLog
-    if ($publicUrl) { break }
-    Start-Sleep -Seconds 1
+  # Cloudflare escribe la URL en stderr
+  $publicUrl = Get-CloudflareUrl -LogPath $errLog -TimeoutSec 60
+  if (-not $publicUrl) {
+    # Intentar también en stdout
+    $publicUrl = Get-CloudflareUrl -LogPath $outLog -TimeoutSec 10
   }
 
   if (-not $publicUrl) {
-    throw "No se pudo obtener URL HTTPS de LocalTunnel. Revisa: $errLog"
+    throw "No se pudo obtener URL de Cloudflare Tunnel. Revisa: $errLog"
   }
 
   $dashboardUrl = $publicUrl.TrimEnd('/')
-  $viewerUrl = "$dashboardUrl/viewer.html?qr=1"
-  $tunnelPassword = Get-LocalTunnelPassword
+  $viewerUrl    = "$dashboardUrl/viewer.html?qr=1"
 
-  Write-Host '[3/3] Demo segura lista' -ForegroundColor Green
-  Write-Host "Dashboard HTTPS: $dashboardUrl" -ForegroundColor Yellow
-  Write-Host "Viewer QR HTTPS: $viewerUrl" -ForegroundColor Yellow
-  if ($tunnelPassword) {
-    Write-Host "Tunnel Password (LocalTunnel): $tunnelPassword" -ForegroundColor Yellow
-    Write-Host 'Si aparece pantalla de verificación, pega ese valor (IP publica).' -ForegroundColor DarkYellow
-  }
+  # Guardar URL en archivo para que el backend la use en el QR automaticamente
+  Set-Content -Path (Join-Path $tmpDir 'public_url.txt') -Value $dashboardUrl -Encoding UTF8
+
+  Write-Host '[3/3] Demo lista - sin password, sin verificacion' -ForegroundColor Green
+  Write-Host ''
+  Write-Host "  Dashboard : $dashboardUrl"  -ForegroundColor Yellow
+  Write-Host "  Viewer QR : $viewerUrl"     -ForegroundColor Yellow
+  Write-Host ''
 
   try {
     Set-Clipboard -Value $dashboardUrl
     Write-Host 'URL del dashboard copiada al portapapeles.' -ForegroundColor DarkGreen
-  } catch {
-  }
+  } catch {}
 
   if ($OpenBrowser) {
     Start-Process $dashboardUrl | Out-Null
   }
 
   Write-Host ''
-  Write-Host 'Para detener solo el túnel HTTPS:' -ForegroundColor Cyan
-  Write-Host '  Stop-Process -Id (Get-Content .tmp/localtunnel.pid)' -ForegroundColor Gray
-  Write-Host 'Para detener todo:' -ForegroundColor Cyan
-  Write-Host '  docker compose down' -ForegroundColor Gray
+  Write-Host 'Para detener el tunel:' -ForegroundColor Cyan
+  Write-Host '  Stop-Process -Id (Get-Content .tmp\cloudflared.pid)' -ForegroundColor Gray
+  Write-Host 'Para detener todo (Docker + tunel):' -ForegroundColor Cyan
+  Write-Host '  Stop-Process -Id (Get-Content .tmp\cloudflared.pid); docker compose down' -ForegroundColor Gray
 }
 finally {
   Pop-Location

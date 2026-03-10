@@ -94,13 +94,13 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Servidor en red local (Docker): `http://192.168.1.35:4000`
+Servidor en red local (Docker): `https://192.168.2.245:4000`
 
 ### 3) Abrir Dashboard
 
 Con backend encendido, abre:
 
-- `http://192.168.1.35:4000`
+- `https://192.168.2.245:4000`
 
 > El frontend es servido directamente por Express. Todo (mapa + cámara IA + tracking + riesgo + telemetría) está integrado en esta única página.
 
@@ -114,8 +114,8 @@ docker compose up --build -d
 
 Con eso se levantan:
 
-- Backend: `http://192.168.1.35:4000`
-- MQTT broker (Mosquitto): `192.168.1.35:1883`
+- Backend: `https://192.168.2.245:4000`
+- MQTT broker (Mosquitto): `192.168.2.245:1883`
 
 Para detener:
 
@@ -188,7 +188,7 @@ Esto limpia contenedores huérfanos y reinicia las dependencias del backend si q
 
 ## Modo Cámara del PC (detección en vivo)
 
-1. Abre `http://192.168.1.35:4000`.
+1. Abre `https://192.168.2.245:4000`.
 2. Clic en **Abrir cámara PC (IA)** y acepta permisos del navegador.
 3. El sistema detecta en tiempo real: `peaton`, `motocicleta`, `automovil`, `bus_transcaribe` (mapeado desde clase `bus`) y `ciclista`.
 4. Cada ciclo se envía al backend por `POST /api/ingest` y actualiza KPIs, riesgo y mapa.
@@ -242,7 +242,7 @@ Importante para ubicación correcta en celular:
 Se configuró la IP fija de la red local para acceso desde celular:
 
 ```text
-http://192.168.1.35:4000/viewer.html?qr=1
+https://192.168.2.245:4000/viewer.html?qr=1
 ```
 
 La vista `viewer.html` muestra solo:
@@ -253,24 +253,20 @@ La vista `viewer.html` muestra solo:
 
 ### Opción recomendada para permiso GPS en celular (HTTPS)
 
-Si el navegador móvil no pide ubicación usando IP local, abre un túnel HTTPS:
+Si el navegador móvil no pide ubicación usando IP local, abre un túnel HTTPS **sin password** con Cloudflare:
 
 ```powershell
-npx.cmd --yes localtunnel --port 4000
+powershell -ExecutionPolicy Bypass -File .\scripts\start-secure-demo.ps1 -OpenBrowser
 ```
 
-Luego abre en el celular la URL `https://...loca.lt/viewer.html?qr=1` que te muestre la terminal.
-
-> Nota: en algunos dispositivos, LocalTunnel puede pedir una verificación adicional en la primera apertura.
-> Si aparece "Tunnel Password", usa tu **IP pública** (NO la IP local `192.168.1.35`).
-> Puedes verla con: `Invoke-WebRequest -UseBasicParsing https://loca.lt/mytunnelpassword | Select-Object -ExpandProperty Content`
+El script descarga `cloudflared` automáticamente si no está instalado, levanta Docker y genera una URL `https://xxx.trycloudflare.com` lista para usar en el celular **sin ninguna verificación ni contraseña**.
 
 Flujo definitivo recomendado:
 
-1. Ejecuta `npx.cmd --yes localtunnel --port 4000`.
-2. Abre el **dashboard** desde la URL `https://...loca.lt` (no desde `http://192.168.x.x`).
+1. Ejecuta el script anterior.
+2. Abre el **dashboard** desde la URL `https://xxx.trycloudflare.com` que aparece en la terminal.
 3. Genera el QR desde ese dashboard HTTPS.
-4. Escanea ese QR: se abrirá `viewer.html?qr=1` en HTTPS y el navegador móvil permitirá geolocalización.
+4. Escanea ese QR: se abrirá `viewer.html?qr=1` en HTTPS y el navegador móvil permitirá geolocalización directamente.
 
 ### Arranque seguro en 1 comando (recomendado)
 
@@ -286,17 +282,7 @@ Comando directo (copiar y pegar desde cualquier ruta):
 powershell -ExecutionPolicy Bypass -File "C:\Users\ayola\OneDrive\Desktop\Proyectoxspoiler\proyecto-seguridad-vial\scripts\start-secure-demo.ps1" -OpenBrowser
 ```
 
-### Tunnel Password (LocalTunnel)
-
-Si aparece la pantalla de verificación de LocalTunnel, usa este comando para obtener el password correcto:
-
-```powershell
-Invoke-WebRequest -UseBasicParsing https://loca.lt/mytunnelpassword | Select-Object -ExpandProperty Content
-```
-
-> Importante: el Tunnel Password es tu **IP pública** (puede cambiar), no la IP local `192.168.1.35`.
-
-El script:
+El script (Cloudflare, sin password):
 
 - levanta Docker (`backend` + `mosquitto`),
 - crea túnel HTTPS con LocalTunnel,
