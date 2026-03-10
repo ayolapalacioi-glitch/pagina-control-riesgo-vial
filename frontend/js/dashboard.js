@@ -48,7 +48,7 @@ const CLASS_MAP = {
 };
 
 const ANIMAL_CLASSES = new Set(['cat', 'dog', 'bird', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe']);
-const SPECIAL_EVENTS = new Set(['bus_transcaribe', 'bicicleta', 'senal_paso', 'ambulancia', 'animal', 'gesto']);
+const SPECIAL_EVENTS = new Set(['bus_transcaribe', 'bicicleta', 'senal_paso', 'ambulancia', 'animal']);
 
 const CLASS_COLORS = {
   peaton: '#22c55e',
@@ -58,8 +58,7 @@ const CLASS_COLORS = {
   bicicleta: '#60a5fa',
   senal_paso: '#e2e8f0',
   animal: '#c084fc',
-  ambulancia: '#67e8f9',
-  gesto: '#f472b6'
+  ambulancia: '#67e8f9'
 };
 
 let hourlyChart;
@@ -405,8 +404,7 @@ function refineBboxForClass(classType, bbox) {
     motocicleta: { sx: 0.86, sy: 0.84, yBias: 0.03 },
     bicicleta: { sx: 0.88, sy: 0.86, yBias: 0.03 },
     ambulancia: { sx: 0.92, sy: 0.8, yBias: 0.04 },
-    animal: { sx: 0.9, sy: 0.88, yBias: 0.02 },
-    gesto: { sx: 1, sy: 1, yBias: 0 }
+    animal: { sx: 0.9, sy: 0.88, yBias: 0.02 }
   };
 
   const p = profiles[classType] || { sx: 0.9, sy: 0.9, yBias: 0 };
@@ -445,7 +443,6 @@ function iou(a, b) {
 
 function minScoreForClass(classType) {
   if (classType === 'peaton') return 0.34;
-  if (classType === 'gesto') return 0.28;
   if (classType === 'bicicleta' || classType === 'motocicleta') return 0.32;
   return MIN_DETECTION_SCORE;
 }
@@ -718,7 +715,6 @@ function updateKpisFromTracks() {
     bicicleta: 0,
     ciclista: 0,
     ambulancia: 0,
-    gesto: 0,
     senal_paso: 0,
     peaton_aereo: 0,
     movimiento_peaton: 0,
@@ -922,26 +918,8 @@ async function detectAmbulanceHeuristic(canvasBbox, transform) {
   return (red / total) > 0.08 && (white / total) > 0.12;
 }
 
-async function detectHands(transform) {
-  if (!handModel) return [];
-  const hands = await handModel.estimateHands(cameraVideo, true);
-  return hands.map((h, idx) => {
-    const xs = h.landmarks.map((p) => p[0]);
-    const ys = h.landmarks.map((p) => p[1]);
-    const videoBox = {
-      x: Math.min(...xs),
-      y: Math.min(...ys),
-      w: Math.max(...xs) - Math.min(...xs),
-      h: Math.max(...ys) - Math.min(...ys)
-    };
-    const canvasBox = clampBboxToCanvas(videoBboxToCanvasBbox(videoBox, transform));
-    return {
-      classType: 'gesto',
-      score: 0.9,
-      bbox: canvasBox,
-      sourceId: `hand-${idx}`
-    };
-  });
+async function detectHands(_transform) {
+  return [];
 }
 
 function pushEventLine(text) {
@@ -1002,7 +980,6 @@ function mapTrackClassToBackendClass(classType) {
   if (classType === 'bus_transcaribe') return 'bus_transcaribe';
   if (classType === 'bicicleta') return 'bicicleta';
   if (classType === 'animal') return 'movimiento_peaton';
-  if (classType === 'gesto') return 'gesto';
   if (classType === 'senal_paso') return 'senal_paso';
   if (classType === 'ambulancia') return 'ambulancia';
   return 'automovil';
@@ -1177,7 +1154,7 @@ function reportToCsv(report) {
   const reportClasses = [
     'peaton', 'peaton_aereo', 'movimiento_peaton', 'motocicleta',
     'automovil', 'bus_transcaribe', 'bicicleta', 'ciclista',
-    'ambulancia', 'gesto', 'aparcamiento', 'senal_paso'
+    'ambulancia', 'aparcamiento', 'senal_paso'
   ];
 
   const rows = [
