@@ -117,42 +117,31 @@ function getPublicTunnelUrl(): string | null {
 }
 
 app.get('/api/network-qr', (req, res) => {
-  const interfaces = os.networkInterfaces();
   const port = env.port;
-  const urls = new Set<string>();
-  const secureUrls = new Set<string>();
-
-  const envPublicBase = (process.env.PUBLIC_BASE_URL || '').trim();
-  if (envPublicBase.startsWith('https://')) {
-    secureUrls.add(`${envPublicBase.replace(/\/$/, '')}/viewer.html?qr=1`);
-  }
-
-  const tunnelBase = getPublicTunnelUrl();
-  if (tunnelBase) {
-    secureUrls.add(`${tunnelBase.replace(/\/$/, '')}/viewer.html?qr=1`);
-  }
-
   const localProtocol = certExists ? 'https' : 'http';
 
-  Object.values(interfaces).forEach((entries) => {
+  // Prioridad: LAN_IP env → IPs de red → host del request
+  const lanIpEnv = (process.env.LAN_IP || '').trim();
+  const localIps: string[] = [];
+  if (lanIpEnv) localIps.push(lanIpEnv);
+  Object.values(os.networkInterfaces()).forEach((entries) => {
     (entries || []).forEach((entry) => {
-      if (!entry || entry.family !== 'IPv4' || entry.internal) return;
-      urls.add(`${localProtocol}://${entry.address}:${port}/viewer.html?qr=1`);
+      if (entry && entry.family === 'IPv4' && !entry.internal && entry.address !== lanIpEnv) {
+        localIps.push(entry.address);
+      }
     });
   });
 
-  const host = req.headers.host;
-  if (typeof host === 'string' && host.length > 0) {
-    const proto = req.secure || certExists ? 'https' : 'http';
-    urls.add(`${proto}://${host}/viewer.html?qr=1`);
-  }
+  const primaryIp = localIps[0] || req.headers.host?.split(':')[0] || 'localhost';
+  const primaryUrl = `${localProtocol}://${primaryIp}:${port}/viewer.html?qr=1`;
 
-  const allUrls = [...Array.from(secureUrls), ...Array.from(urls)];
+  const allUrls = localIps.map((ip) => `${localProtocol}://${ip}:${port}/viewer.html?qr=1`);
+  if (allUrls.length === 0) allUrls.push(primaryUrl);
 
   res.json({
-    primary: allUrls[0] || `${certExists ? 'https' : 'http'}://localhost:${port}/viewer.html?qr=1`,
+    primary: primaryUrl,
     urls: allUrls,
-    hasSecure: secureUrls.size > 0
+    hasSecure: certExists
   });
 });
 

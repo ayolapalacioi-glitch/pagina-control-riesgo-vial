@@ -45,4 +45,19 @@ Write-Host ""
 
 try { Set-Clipboard -Value "https://${ip}:${port}" } catch {}
 
+# Generar QR local con Python
+Write-Host "  Generando QR local..." -ForegroundColor DarkYellow
+$pyExe = $null
+foreach ($candidate in @('python', 'python3', 'py')) {
+  if (Get-Command $candidate -ErrorAction SilentlyContinue) {
+    $pyExe = $candidate; break
+  }
+}
+if ($pyExe) {
+  & $pyExe (Join-Path $root 'generate-qr.py') $ip $port
+  Write-Host "  QR abierto. Escanea 'qr-viewer-local.png' con tu celular." -ForegroundColor Green
+} else {
+  Write-Host "  Python no encontrado. Escanea manualmente: https://${ip}:${port}/viewer.html?qr=1" -ForegroundColor DarkYellow
+}
+
 Pop-Location
