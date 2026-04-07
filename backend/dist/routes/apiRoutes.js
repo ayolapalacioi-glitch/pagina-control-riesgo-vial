@@ -15,6 +15,7 @@ const statsService_1 = require("../services/statsService");
 const reportService_1 = require("../services/reportService");
 const trafficCounter_1 = require("../services/trafficCounter");
 const counts_1 = require("../services/counts");
+const presenceSignal_1 = require("../services/presenceSignal");
 function buildApiRoutes(io) {
     const router = (0, express_1.Router)();
     router.get('/health', (_req, res) => {
@@ -23,6 +24,7 @@ function buildApiRoutes(io) {
     router.post('/ingest', async (req, res) => {
         try {
             const payload = (0, ingestController_1.validatePayload)(req.body);
+            (0, presenceSignal_1.updatePresenceSignal)(payload);
             const tracks = (0, tracker_1.updateTracks)(payload);
             const event = (0, riskCalculator_1.calculateRisk)(payload, tracks, 'http');
             (0, trafficCounter_1.registerTracksForReport)(payload.camera_id, tracks, payload.timestamp);
@@ -59,6 +61,7 @@ function buildApiRoutes(io) {
         const frames = JSON.parse(raw);
         for (const frame of frames) {
             const payload = (0, ingestController_1.validatePayload)(frame);
+            (0, presenceSignal_1.updatePresenceSignal)(payload);
             const tracks = (0, tracker_1.updateTracks)(payload);
             const event = (0, riskCalculator_1.calculateRisk)(payload, tracks, 'mock');
             (0, trafficCounter_1.registerTracksForReport)(payload.camera_id, tracks, payload.timestamp);
@@ -97,6 +100,9 @@ function buildApiRoutes(io) {
     });
     router.get('/report/traffic', (_req, res) => {
         res.json((0, trafficCounter_1.getTrafficReport)());
+    });
+    router.get('/esp32/person-status', (_req, res) => {
+        res.json((0, presenceSignal_1.getPresenceSignalState)());
     });
     router.get('/export/csv', async (_req, res) => {
         const events = await (0, eventStore_1.getAllEvents)();

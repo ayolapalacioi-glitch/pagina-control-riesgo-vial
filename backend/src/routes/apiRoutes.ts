@@ -9,6 +9,7 @@ import { aggregateStats } from '../services/statsService';
 import { exportDailyPdf, exportEventsToCsv } from '../services/reportService';
 import { getTrafficReport, registerTracksForReport } from '../services/trafficCounter';
 import { buildCounts } from '../services/counts';
+import { getPresenceSignalState, updatePresenceSignal } from '../services/presenceSignal';
 import { Server } from 'socket.io';
 
 export function buildApiRoutes(io: Server) {
@@ -21,6 +22,7 @@ export function buildApiRoutes(io: Server) {
   router.post('/ingest', async (req, res) => {
     try {
       const payload = validatePayload(req.body);
+      updatePresenceSignal(payload);
       const tracks = updateTracks(payload);
       const event = calculateRisk(payload, tracks, 'http');
       registerTracksForReport(payload.camera_id, tracks, payload.timestamp);
@@ -60,6 +62,7 @@ export function buildApiRoutes(io: Server) {
 
     for (const frame of frames) {
       const payload = validatePayload(frame);
+      updatePresenceSignal(payload);
       const tracks = updateTracks(payload);
       const event = calculateRisk(payload, tracks, 'mock');
       registerTracksForReport(payload.camera_id, tracks, payload.timestamp);
@@ -103,6 +106,10 @@ export function buildApiRoutes(io: Server) {
 
   router.get('/report/traffic', (_req, res) => {
     res.json(getTrafficReport());
+  });
+
+  router.get('/esp32/person-status', (_req, res) => {
+    res.json(getPresenceSignalState());
   });
 
   router.get('/export/csv', async (_req, res) => {

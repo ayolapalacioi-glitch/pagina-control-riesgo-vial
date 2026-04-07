@@ -1,0 +1,84 @@
+DESCRIPCION DEL PROYECTO - SEGURIDAD VIAL INTELIGENTE
+
+Resumen del proyecto
+Este proyecto es una plataforma de Seguridad Vial Inteligente enfocada en deteccion de riesgo entre peatones y vehiculos, visualizacion en tiempo real y senalizacion fisica con ESP32. Su objetivo es apoyar estrategias de prevencion tipo Vision Cero mediante monitoreo continuo, alertas y reportes operativos.
+
+Objetivo funcional
+- Detectar actores viales (peatones y vehiculos) desde un flujo de vision por camara.
+- Calcular riesgo de conflicto peatonal-vehicular en tiempo real.
+- Mostrar estado y metricas en una interfaz web.
+- Exponer estado para dispositivos externos (ESP32) que muestren una senal visual simple.
+- Guardar eventos relevantes y generar reportes.
+
+Arquitectura general
+- Backend: servicio principal en Node.js con TypeScript.
+- Frontend: dashboard web para visualizacion y operacion.
+- Modulo de vision en tiempo real: app de deteccion y emision de frames/detecciones.
+- Integracion por HTTP y MQTT para ingestar eventos.
+- Canal WebSocket con snapshots en vivo para clientes conectados.
+- Soporte Docker Compose para levantar servicios.
+- Integracion ESP32 como indicador web remoto de estado.
+
+Capacidades principales
+1) Ingesta de detecciones
+- Recibe payloads estructurados con camara, timestamp, geolocalizacion, tamano de frame, poligono de cruce y lista de detecciones.
+- Admite fuente HTTP y fuente MQTT.
+
+2) Calculo de riesgo
+- Procesa tracks, trayectoria y proximidad para clasificar nivel de riesgo.
+- Registra eventos de mayor severidad para historico y analisis posterior.
+
+3) Tiempo real
+- Emite snapshots por WebSocket con conteos por clase y estado de riesgo.
+- Permite monitoreo multi-dispositivo conectado al dashboard/viewer.
+
+4) Reporteria
+- Exportacion de eventos en CSV y PDF.
+- Estadisticas por periodo y reporte de trafico agregado.
+
+5) Estado para IoT (ESP32)
+- Endpoint de estado simplificado para consumo en microcontrolador.
+- Logica de semaforizacion visual en la web de la ESP32:
+  - Verde: hay peaton detectado.
+  - Rojo: no hay peaton, pero si vehiculo detectado.
+  - Gris: no hay deteccion relevante.
+
+Flujo operativo de alto nivel
+1. El sistema de vision genera detecciones por frame.
+2. El backend valida payload, actualiza tracks y calcula riesgo.
+3. Se publica snapshot en tiempo real a clientes web.
+4. Se persisten eventos relevantes para historico/reportes.
+5. La ESP32 consulta periodicamente el estado resumido y actualiza su pagina local de color.
+
+Tecnologias usadas
+- Node.js, TypeScript, Express, Socket.IO, MQTT, Zod, LowDB, PDFKit.
+- Frontend web con JavaScript y estilos utilitarios.
+- ESP32 con WiFi, servidor web embebido y consulta HTTP/HTTPS.
+- Docker Compose para orquestacion local.
+
+Estado actual del proyecto
+- Plataforma funcional con deteccion, backend, dashboard y reportes.
+- Integracion ESP32 operativa para senalizacion web en tiempo real.
+- Diagnostico de conexion WiFi en ESP32 implementado (incluye timeout y mensajes de estado).
+- Resolucion por nombre local puede depender de mDNS/Bonjour en Windows; acceso por IP es el metodo mas confiable.
+
+Casos de uso
+- Monitoreo de cruces peatonales en intersecciones urbanas.
+- Senalizacion remota de riesgo para operadores o personal en campo.
+- Soporte a toma de decisiones con evidencia historica y metricas.
+
+Limitaciones y consideraciones
+- La ESP32 requiere red WiFi de 2.4 GHz.
+- Si se usa HTTPS local con certificado autofirmado, algunos clientes pueden requerir ajustes de confianza.
+- En Windows, nombres tipo .local pueden no resolver sin soporte mDNS adicional.
+- Para operacion estable, backend y ESP32 deben estar en la misma red local o tener enrutamiento valido.
+
+Lo que deberia documentar Gemini
+- Vision general del sistema y alcance.
+- Arquitectura y diagrama de componentes.
+- Contratos de datos de entrada/salida.
+- Endpoints y eventos en tiempo real.
+- Procedimiento de despliegue local con Docker.
+- Guia de integracion y troubleshooting de ESP32.
+- Operacion diaria, monitoreo y generacion de reportes.
+- Buenas practicas de seguridad y mantenimiento.

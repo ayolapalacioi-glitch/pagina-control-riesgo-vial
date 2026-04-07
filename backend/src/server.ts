@@ -15,6 +15,7 @@ import { calculateRisk } from './services/riskCalculator';
 import { saveEvent } from './services/eventStore';
 import { registerTracksForReport } from './services/trafficCounter';
 import { buildCounts } from './services/counts';
+import { getPresenceSignalState, updatePresenceSignal } from './services/presenceSignal';
 
 type FenceUpdate = {
   active: boolean;
@@ -72,7 +73,7 @@ const server = certExists
   ? https.createServer({ cert: fs.readFileSync(CERT_PATH), key: fs.readFileSync(KEY_PATH) }, app)
   : http.createServer(app);
 
-const io = new Server(server as Parameters<typeof Server>[0], {
+const io = new Server(server, {
   cors: {
     origin: env.frontendOrigin
   }
@@ -151,9 +152,64 @@ app.get('/vision', (_req, res) => {
   res.sendFile(path.resolve(process.cwd(), '../vision-rt/index.html'));
 });
 
+app.get('/esp32/light', (_req, res) => {
+  const status = getPresenceSignalState();
+  const bgColor = status.personDetected ? '#00b050' : '#2f2f2f';
+  const label = status.personDetected ? 'PERSONA DETECTADA' : 'SIN DETECCION';
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="refresh" content="1" />
+  <title>ESP32 Luz de Estado</title>
+  <style>
+    :root { color-scheme: only light; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      font-family: sans-serif;
+      background: ${bgColor};
+      color: #ffffff;
+    }
+    .center {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(22px, 7vw, 44px);
+      letter-spacing: 0.06em;
+    }
+    p {
+      margin-top: 10px;
+      font-size: clamp(12px, 4vw, 18px);
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <main class="center">
+    <div>
+      <h1>${label}</h1>
+      <p>Estado se actualiza cada 1 segundo</p>
+    </div>
+  </main>
+</body>
+</html>`);
+});
+
 createMqttClient(async (_topic, rawMessage) => {
   try {
     const payload = validatePayload(JSON.parse(rawMessage));
+    updatePresenceSignal(payload);
     const tracks = updateTracks(payload);
     const event = calculateRisk(payload, tracks, 'mqtt');
     registerTracksForReport(payload.camera_id, tracks, payload.timestamp);
