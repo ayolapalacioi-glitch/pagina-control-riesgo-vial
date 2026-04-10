@@ -1,13 +1,14 @@
 services:
   backend:
-    image: node:20
-    working_dir: /app/backend
+    build:
+      context: .
+      dockerfile: backend_py/Dockerfile
+    working_dir: /app
     restart: unless-stopped
     volumes:
       - ./:/app
-      - backend_node_modules:/app/backend/node_modules
       - ./certs:/app/certs
-    command: sh /app/backend/entrypoint.sh
+    command: sh /app/backend_py/entrypoint.sh
     ports:
       - "4000:4000"
     environment:
@@ -15,10 +16,12 @@ services:
       - FRONTEND_ORIGIN=*
       - USE_MQTT=false
       - MQTT_BROKER_URL=mqtt://mosquitto:1883
-      - MQTT_TOPIC=sensecraft/crosswalk/cam-001
+      - MQTT_TOPIC=yolo/crosswalk/cam-001
       - LAN_IP=192.168.2.245
+      - YOLO_MODEL_PATH=yolov8n.pt
+      - YOLO_CONF=0.35
     healthcheck:
-      test: ["CMD", "node", "-e", "const https=require('https');https.get({hostname:'localhost',port:4000,path:'/api/health',rejectUnauthorized:false},r=>process.exit(r.statusCode<400?0:1)).on('error',()=>process.exit(1))"]
+      test: ["CMD", "python", "-c", "import ssl, urllib.request, sys; ctx=ssl._create_unverified_context(); r=urllib.request.urlopen('https://localhost:4000/api/health', context=ctx, timeout=5); sys.exit(0 if r.status < 400 else 1)"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -32,5 +35,3 @@ services:
     ports:
       - "1883:1883"
 
-volumes:
-  backend_node_modules:

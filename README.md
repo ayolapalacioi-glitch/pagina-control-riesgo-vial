@@ -9,15 +9,15 @@ Sistema edge-to-cloud para reducir mortalidad de peatones en pasos de cebra bajo
 ## Avances Nuevos del Proyecto (Actualizado)
 
 - Unificación del stack en una sola app de backend: dashboard principal en `/`, visor móvil en `/viewer.html` y módulo de visión en `/vision`.
-- Soporte de ingesta híbrida en tiempo real por `HTTP` y `MQTT`, con validación estricta del payload usando `zod`.
+- Soporte de ingesta híbrida en tiempo real por `HTTP` y `MQTT`, con validación estricta del payload usando `pydantic`.
 - Motor de riesgo operativo con métricas `TTC`, `PET`, predicción de conflicto a 1-5s y clasificación `BAJO|MEDIO|ALTO|CRITICO`.
-- Persistencia local de eventos near-miss con `lowdb` y tope de retención para mantener rendimiento de demo.
+- Persistencia local de eventos near-miss en JSON y tope de retención para mantener rendimiento de demo.
 - Exportación lista para operación pública: reportes `CSV` y `PDF` desde API.
 - Mapa táctico con capas de demografía, siniestralidad histórica, calor de riesgo, tracks vivos y cerca invisible.
 - Sincronización multi-dispositivo de cerca invisible (50m) por `Socket.IO` para dashboard + celulares conectados.
 - Flujo QR fortalecido: generación de enlace de red, QR gráfico y activación automática del modo visor.
-- Pipeline de cámara PC robustecido: filtros por confianza/tamaño, deduplicación NMS, tracking temporal, smoothing y autorecuperación del detector.
-- Detección de eventos enriquecidos en vivo: `ambulancia` (heurística visual), `gesto` (handpose), `animal` y señalización.
+- Pipeline de cámara PC migrado a inferencia backend: el cliente envía frames y el servidor Python ejecuta YOLO en tiempo real.
+- Detección de eventos enriquecidos en backend: `ambulancia`, `movimiento_peaton`, `senal_paso` y clases vehiculares/peatonales de operación vial.
 - Gestión de dispositivos conectados en tiempo real con identificación, tipo de cliente y ubicación GPS.
 - Señal de presencia peatonal/vehicular para integración con semáforo/luz ESP32 (`/esp32/light` y `/api/esp32/person-status`).
 - Arranque seguro para demo móvil con túnel HTTPS de Cloudflare y publicación automática de URL pública para QR.
@@ -25,27 +25,17 @@ Sistema edge-to-cloud para reducir mortalidad de peatones en pasos de cebra bajo
 
 ## Librerías Backend (línea por línea)
 
-Dependencias de runtime (`backend/package.json`):
+Dependencias de runtime (`backend_py/requirements.txt`):
 
-- `express`: servidor HTTP/HTTPS, API REST y publicación de frontend estático.
-- `cors`: habilita consumo de API y sockets desde clientes web en distintas procedencias.
-- `socket.io`: canal bidireccional en tiempo real para snapshots, objetos, estado, cerca y dispositivos.
-- `mqtt`: suscripción a tópicos de edge para ingesta desde cámaras/sensores YOLO.
-- `zod`: validación tipada y estricta del payload de ingesta.
-- `lowdb`: persistencia JSON local de eventos near-miss para modo demo.
-- `csv-stringify`: serialización de eventos hacia exportables CSV.
-- `pdfkit`: generación de reporte PDF diario con indicadores y eventos recientes.
-- `dotenv`: carga de configuración por entorno (`PORT`, `MQTT_*`, `USE_MQTT`, etc.).
-- `chart.js`: dependencia instalada en backend para mantener compatibilidad de stack analítico; el render principal de gráficas ocurre en frontend.
-
-Dependencias de desarrollo (`backend/package.json`):
-
-- `typescript`: tipado estático para servicios de riesgo, tracking y contratos.
-- `tsx`: ejecución y watch en desarrollo sin build manual intermedio.
-- `@types/node`: tipos de Node.js para módulos de sistema, red y archivos.
-- `@types/express`: tipos para handlers y middleware de Express.
-- `@types/cors`: tipos para configuración CORS.
-- `@types/pdfkit`: tipos para composición de reportes PDF.
+- `fastapi`: API REST y publicación de frontend estático.
+- `python-socketio`: canal bidireccional en tiempo real para snapshots, objetos, estado, cerca y dispositivos.
+- `uvicorn`: servidor ASGI para ejecución HTTPS del backend.
+- `pydantic`: validación tipada y estricta del payload de ingesta.
+- `paho-mqtt`: suscripción a tópicos MQTT para ingesta edge.
+- `ultralytics`: motor YOLO para inferencia de visión en backend.
+- `opencv-python-headless` y `numpy`: decodificación y preprocesamiento de frames.
+- `reportlab`: generación de reporte PDF diario.
+- `python-dotenv`: carga de configuración por entorno.
 
 ## Librerías Frontend (línea por línea)
 
@@ -56,11 +46,9 @@ Librerías cargadas en dashboard y visor (`frontend/index.html`, `frontend/viewe
 - `leaflet.heat` (CDN): visualización de heatmap para concentración de eventos near-miss.
 - `chart.js` (CDN): gráficas en vivo de tendencia y distribución vehicular.
 - `qrcodejs` (CDN): generación de QR para onboarding móvil y activación de visor.
-- `@tensorflow/tfjs` (CDN dinámico): runtime de inferencia para visión en navegador.
-- `@tensorflow-models/coco-ssd` (CDN dinámico): detector base de objetos en modo compatibilidad.
-- `@tensorflow-models/handpose` (CDN dinámico): detección de manos/gestos para eventos especiales.
+- Motor de visión en frontend: no aplica. La inferencia se ejecuta 100% en backend Python (YOLO).
 
-Librerías del módulo `vision-rt` (`vision-rt/package.json` + `vision-rt/index.html`):
+Librerías del módulo `vision-rt` (`vision-rt/package.json` + `vision-rt/index.html`, legado opcional):
 
 - `express`: servidor standalone opcional para la vista de visión.
 - `socket.io`: emisión de `state_update` y `objects_update` al ecosistema en tiempo real.
@@ -68,7 +56,8 @@ Librerías del módulo `vision-rt` (`vision-rt/package.json` + `vision-rt/index.
 
 ## Funcionalidades Backend (línea por línea)
 
-- `POST /api/ingest`: valida frame YOLO normalizado, actualiza tracking, calcula riesgo, emite snapshot y persiste eventos altos/críticos.
+- `POST /api/vision/infer`: recibe frame base64, ejecuta YOLO en backend, actualiza tracking/riesgo y devuelve tracks + telemetría.
+- `POST /api/ingest`: valida frame YOLO normalizado (externo), actualiza tracking, calcula riesgo, emite snapshot y persiste eventos altos/críticos.
 - `POST /api/simulate/offline`: reproduce dataset offline para demo sin hardware.
 - `GET /api/events`: devuelve histórico de eventos near-miss guardados.
 - `GET /api/stats`: agrega métricas por periodo (`hour|day|week`) con conteo de riesgo y distribución horaria.
@@ -91,10 +80,9 @@ Librerías del módulo `vision-rt` (`vision-rt/package.json` + `vision-rt/index.
 - Visualización cartográfica multicapa con riesgo acumulado, calor, demografía y siniestralidad histórica.
 - Simulación de múltiples cámaras para narrativa de escalabilidad metropolitana.
 - Modo demo offline con replay de frames sample sin necesidad de cámara ni edge real.
-- Modo cámara PC con detección en vivo y envío periódico de frames al backend.
-- Robustez anti-flicker: filtros de score/tamaño, deduplicación por IoU, smoothing de tracks y tolerancia a pérdidas.
-- Recuperación automática del detector tras rachas de error para evitar caída de demo.
-- Heurística de ambulancia por patrón cromático y soporte de evento de gesto con handpose.
+- Modo cámara PC con captura en navegador y detección centralizada en backend YOLO.
+- Ciclo de inferencia servidor: detección, tracking temporal, cálculo TTC/PET y emisión socket de estado/objetos.
+- Simplificación del cliente: renderiza overlays y métricas sin cargar modelos de IA en browser.
 - Telemetría visual de riesgo (`TTC`, `PET`, `vRel`) y lista de objetos en seguimiento.
 - Alertas multimodales (visual + beep + voz) ante riesgo crítico.
 - Exportación directa de CSV/PDF desde botones del panel.
@@ -107,12 +95,12 @@ Librerías del módulo `vision-rt` (`vision-rt/package.json` + `vision-rt/index.
 ## Arquitectura General
 
 - **Edge AI**: modelo YOLO custom (v8/v11) para detección de actores viales por frame.
-- **Backend Node.js 20 + TypeScript**:
+- **Backend Python 3.11 + FastAPI + Socket.IO**:
   - Ingesta por `MQTT` o `HTTP POST`.
   - Tracking por `track_id` (fallback básico por clase/índice).
   - Cálculo de riesgo con `TTC`, `PET` y predicción de conflicto a 1-5s.
-  - Persistencia de near-miss en `lowdb` (JSON local para demo competitiva).
-  - Emisión en tiempo real a dashboard con `Socket.io`.
+  - Persistencia de near-miss en JSON local para demo competitiva.
+  - Emisión en tiempo real a dashboard con `Socket.IO`.
 
 ### Clases YOLO soportadas (ingesta)
 
@@ -141,18 +129,16 @@ Esto permite integrar un pipeline YOLO especializado para: buses, bicicletas, ge
 
 ```text
 proyecto-seguridad-vial/
-├── backend/
-│   ├── src/
-│   │   ├── config/
-│   │   ├── controllers/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   ├── utils/
-│   │   ├── types.ts
-│   │   └── server.ts
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── .env.example
+├── backend_py/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── vision_service.py
+│   │   ├── tracker.py
+│   │   ├── risk.py
+│   │   └── ...
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── entrypoint.sh
 ├── frontend/
 │   ├── index.html
 │   ├── css/tailwind.css
@@ -170,25 +156,24 @@ proyecto-seguridad-vial/
 
 ### 1) Requisitos
 
-- Node.js 20+
-- npm 10+
+- Python 3.11+
+- pip 24+
 - (Opcional) broker MQTT local o Docker
 
 ### 2) Backend
 
 ```bash
-cd backend
-npm install
-cp .env.example .env
-npm run dev
+cd backend_py
+pip install -r requirements.txt
+uvicorn backend_py.app.main:get_asgi_app --factory --host 0.0.0.0 --port 4000
 ```
 
-> En Windows PowerShell, si `npm` falla por política de ejecución, usa:
+> En Windows PowerShell, puedes ejecutar así:
 
 ```powershell
-cd backend
-npm.cmd install
-npm.cmd run dev
+cd backend_py
+python -m pip install -r requirements.txt
+python -m uvicorn backend_py.app.main:get_asgi_app --factory --host 0.0.0.0 --port 4000
 ```
 
 Servidor en red local (Docker): `https://192.168.2.245:4000`
@@ -199,7 +184,7 @@ Con backend encendido, abre:
 
 - `https://192.168.2.245:4000`
 
-> El frontend es servido directamente por Express. Todo (mapa + cámara IA + tracking + riesgo + telemetría) está integrado en esta única página.
+> El frontend es servido directamente por FastAPI. Todo (mapa + cámara + inferencia YOLO backend + tracking + riesgo + telemetría) está integrado en esta única página.
 
 ## Arranque con Docker (recomendado para demo)
 
@@ -263,11 +248,10 @@ En PowerShell, desde la raíz del proyecto:
 ```powershell
 docker compose down --remove-orphans
 docker compose rm -f
-docker volume rm proyecto-seguridad-vial_backend_node_modules
 docker compose up --build
 ```
 
-Esto limpia contenedores huérfanos y reinicia las dependencias del backend si quedaron corruptas.
+Esto limpia contenedores huérfanos y recrea la imagen del backend Python.
 
 ## Flujo de demo (sin hardware)
 
@@ -287,8 +271,8 @@ Esto limpia contenedores huérfanos y reinicia las dependencias del backend si q
 
 1. Abre `https://192.168.2.245:4000`.
 2. Clic en **Abrir cámara PC (IA)** y acepta permisos del navegador.
-3. El sistema detecta en tiempo real: `peaton`, `motocicleta`, `automovil`, `bus_transcaribe` (mapeado desde clase `bus`) y `ciclista`.
-4. Cada ciclo se envía al backend por `POST /api/ingest` y actualiza KPIs, riesgo y mapa.
+3. El sistema detecta en tiempo real en backend YOLO: `peaton`, `motocicleta`, `automovil`, `bus_transcaribe`, `bicicleta` y clases complementarias.
+4. Cada ciclo envía frames al backend por `POST /api/vision/infer` y actualiza KPIs, riesgo y mapa.
 5. Clic en **Reporte detecciones cámara** para descargar conteos acumulados por clase/cámara.
 
 Notas:
@@ -435,18 +419,19 @@ Salida: `BAJO | MEDIO | ALTO | CRITICO` + factores explicativos + acción recome
 ## Endpoints principales
 
 - `GET /api/health`
+- `POST /api/vision/infer`
 - `POST /api/ingest`
 - `POST /api/simulate/offline`
 - `GET /api/events`
 - `GET /api/stats?period=hour|day|week`
+- `GET /api/report/traffic`
 - `GET /api/export/csv`
 - `GET /api/export/pdf`
 
 ## Script generador de datos falsos
 
 ```bash
-cd backend
-npm run seed
+python backend_py/tools/generate_mock_data.py
 ```
 
 Genera frames sintéticos en el archivo de muestra de detecciones dentro de `data/`.

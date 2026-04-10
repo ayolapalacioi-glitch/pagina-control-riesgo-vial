@@ -9,8 +9,8 @@ Plataforma web edge-to-cloud para detección de actores viales, tracking multiob
 
 ### 2.1 Funcionales
 1. Captura de video en navegador (PC cámara) con permisos del usuario.
-2. Detección por motor `SenseCraft SDK` con fallback automático a `coco-ssd`.
-3. Detección de manos por `handpose` para evento de gesto.
+2. Detección por motor `YOLO` ejecutado en backend Python.
+3. Cliente web sin modelos IA locales: captura frame y delega inferencia al servidor.
 4. Normalización de clases y mapeo a dominio vial:
    - `person -> peaton`
    - `car/truck -> automovil`
@@ -26,12 +26,12 @@ Plataforma web edge-to-cloud para detección de actores viales, tracking multiob
    - PET aproximado
    - velocidad relativa (vRel)
    - riesgo discreto: `BAJO|MEDIO|ALTO|CRITICO`
-8. Heurística de ambulancia por ratios rojo/blanco sobre recorte (crop).
+8. Normalización de detecciones YOLO a clases de dominio vial para analítica de riesgo.
 9. Emisión de eventos por Socket.IO:
    - `state_update`
    - `objects_update`
    - `snapshot` (backend)
-10. Ingesta HTTP a backend (`POST /api/ingest`) para persistencia y analítica.
+10. Ingesta de visión por `POST /api/vision/infer` y soporte de ingesta externa por `POST /api/ingest`.
 11. UI unificada en una sola página (`http://localhost:4000`) con:
    - mapa Leaflet
    - overlay de detección
@@ -42,10 +42,10 @@ Plataforma web edge-to-cloud para detección de actores viales, tracking multiob
 
 ### 2.2 No funcionales
 1. **Tiempo real**: objetivo de loop visual ~10 FPS (throttle por `requestAnimationFrame` y ventana de 90ms).
-2. **Disponibilidad local demo**: ejecución por Docker Compose o Node local.
+2. **Disponibilidad local demo**: ejecución por Docker Compose o Python local.
 3. **Resiliencia**:
-   - fallback de detector
-   - mensajes explícitos de fallo de cámara/modelo
+   - validación robusta de payloads en backend
+   - mensajes explícitos de fallo de cámara/comunicación con API
 4. **Escalabilidad lógica**:
    - soporte multicámara por `camera_id`
    - estructura de envelope reusable para integración con mapa/sistemas externos
@@ -63,29 +63,26 @@ Plataforma web edge-to-cloud para detección de actores viales, tracking multiob
 ### 3.1 Componentes
 - **Frontend (`frontend/`)**
   - `index.html`: dashboard unificado
-  - `js/dashboard.js`: motor en tiempo real (detección, tracking, riesgo, sockets)
+   - `js/dashboard.js`: captura de cámara, envío de frames a backend y render de resultados
   - `js/map.js`: capas geográficas y actualización de mapa
   - `js/frame-schema.js`: contrato `objects_update`
   - `js/map-adapter.js`: transformación pixel->lat/lng
   - `css/tailwind.css`: estilos custom
 
-- **Backend (`backend/`)**
-  - `src/server.ts`: Express + Socket.IO + static frontend/data
-  - `src/routes/apiRoutes.ts`: endpoints
-  - `src/services/*`: tracker, risk, stats, reportes, event store
-  - `lowdb` para persistencia local demo
+- **Backend (`backend_py/`)**
+   - `app/main.py`: FastAPI + Socket.IO + static frontend/data
+   - `app/vision_service.py`: inferencia YOLO en servidor
+   - `app/*`: tracker, risk, stats, reportes, event store JSON
 
 - **Infra**
   - `docker-compose.yml`: backend + mosquitto
 
 ### 3.2 Flujo de datos
 1. Navegador captura frame.
-2. Detector produce objetos.
-3. Tracking asocia detecciones y calcula trayectorias.
-4. Riesgo se estima con TTC/PET/vRel.
-5. Frontend emite `state_update` + `objects_update`.
-6. Frontend envía `POST /api/ingest` para persistencia/analytics.
-7. Backend emite `snapshot` a clientes conectados.
+2. Frontend envía frame por `POST /api/vision/infer`.
+3. Backend ejecuta YOLO, tracking y cálculo TTC/PET/vRel.
+4. Backend emite `state_update`, `objects_update` y `snapshot` por Socket.IO.
+5. Dashboard renderiza mapa, KPIs, eventos, gráficas y tabla.
 8. Dashboard actualiza mapa, KPIs, eventos, gráficas y tabla.
 
 ---
@@ -93,23 +90,20 @@ Plataforma web edge-to-cloud para detección de actores viales, tracking multiob
 ## 4) Librerías y tecnologías usadas
 
 ## 4.1 Backend
-- **Node.js 20+**
-- **TypeScript 5.x**
-- **Express 4.21.x**
+- **Python 3.11+**
+- **FastAPI**
+- **Uvicorn**
 - **Socket.IO 4.8.x**
-- **lowdb 7.x**
-- **mqtt 5.x**
-- **zod 3.x**
-- **pdfkit 0.17.x**
-- **csv-stringify 6.x**
+- **paho-mqtt**
+- **pydantic**
+- **ultralytics (YOLO)**
+- **opencv-python-headless + numpy**
+- **reportlab**
 
 ## 4.2 Frontend
 - **Leaflet 1.9.x**
 - **leaflet.heat**
 - **Chart.js**
-- **TensorFlow.js 4.22.x**
-- **@tensorflow-models/coco-ssd 2.2.3**
-- **@tensorflow-models/handpose 0.0.7**
 - **Socket.IO client 4.8.x**
 
 ## 4.3 Infraestructura
@@ -123,8 +117,8 @@ Plataforma web edge-to-cloud para detección de actores viales, tracking multiob
    - `MapAdapter`: desacopla coordenadas de canvas respecto a georreferenciación.
 2. **Schema/Envelope Pattern**
    - `VisionFrameSchema`: contrato reusable para emisión de `objects_update`.
-3. **Strategy + Fallback**
-   - Detector principal SenseCraft y estrategia de fallback a coco-ssd.
+3. **Backend Vision Pattern**
+   - Inferencia centralizada en backend YOLO y cliente ligero de visualización.
 4. **Publisher/Subscriber**
    - Socket.IO para eventos en tiempo real (`emit`/`on`).
 5. **Layered Architecture**
@@ -183,7 +177,7 @@ Plataforma web edge-to-cloud para detección de actores viales, tracking multiob
 
 1. `CAMERA_ID` en frontend (`dashboard.js`).
 2. `mapBounds` en `MapAdapter` para conversión geo.
-3. `MODEL_TIMEOUT_MS` para control de arranque de modelos.
+3. `YOLO_MODEL_PATH` y `YOLO_CONF` para selección/umbral del modelo.
 4. Ventana de serie real-time (`REALTIME_WINDOW = 60`).
 5. Frecuencia de ingesta backend (`lastIngestMs`, ~1.1s).
 
@@ -191,8 +185,8 @@ Plataforma web edge-to-cloud para detección de actores viales, tracking multiob
 
 ## 8) Seguridad y riesgos técnicos
 1. Cámara requiere contexto seguro (`localhost`/HTTPS).
-2. Dependencia de CDNs para modelos JS (afectable por bloqueadores).
-3. Heurística de ambulancia es aproximación, no clasificación clínica.
+2. El rendimiento depende de CPU/GPU del backend para inferencia YOLO.
+3. La detección de ambulancia depende de clases disponibles en el modelo entrenado.
 4. Coordenadas geo desde bounds lineales: útiles para visualización, no para peritaje.
 
 ---
