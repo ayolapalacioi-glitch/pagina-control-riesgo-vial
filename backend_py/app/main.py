@@ -28,7 +28,6 @@ from .vision_service import vision_service
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 FRONTEND_DIR = ROOT_DIR / "frontend"
-VISION_RT_DIR = ROOT_DIR / "vision-rt"
 DATA_DIR = ROOT_DIR / "data"
 TMP_DIR = ROOT_DIR / ".tmp"
 
@@ -417,8 +416,16 @@ app.mount("/data", StaticFiles(directory=str(DATA_DIR)), name="data")
 @app.get("/esp32/light", response_class=HTMLResponse)
 async def esp32_light() -> HTMLResponse:
     status = get_presence_signal_state()
-    bg_color = "#00b050" if status["personDetected"] else "#2f2f2f"
-    label = "PERSONA DETECTADA" if status["personDetected"] else "SIN DETECCION"
+    signal_state = status.get("state")
+    if signal_state == "GREEN":
+        bg_color = "#00b050"
+        label = "PERSONA DETECTADA"
+    elif signal_state == "RED":
+        bg_color = "#d22222"
+        label = "VEHICULO DETECTADO"
+    else:
+        bg_color = "#2f2f2f"
+        label = "SIN DETECCION"
 
     html = f"""<!doctype html>
 <html lang='es'>
@@ -435,23 +442,10 @@ async def esp32_light() -> HTMLResponse:
   </style>
 </head>
 <body>
-  <main class='center'><div><h1>{label}</h1><p>Estado se actualiza cada 1 segundo</p></div></main>
+    <main class='center'><div><h1>{label}</h1><p>Estado se actualiza cada 1 segundo ({signal_state or 'GRAY'})</p></div></main>
 </body>
 </html>"""
     return HTMLResponse(html)
-
-
-@app.get("/vision")
-async def vision_index() -> FileResponse:
-    return FileResponse(VISION_RT_DIR / "index.html")
-
-
-@app.get("/vision/{file_path:path}")
-async def vision_static(file_path: str):
-    candidate = (VISION_RT_DIR / file_path).resolve()
-    if candidate.exists() and candidate.is_file() and str(candidate).startswith(str(VISION_RT_DIR.resolve())):
-        return FileResponse(candidate)
-    raise HTTPException(status_code=404, detail="Archivo no encontrado")
 
 
 @app.get("/viewer.html")

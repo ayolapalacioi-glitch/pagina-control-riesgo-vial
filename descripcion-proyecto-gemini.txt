@@ -11,9 +11,9 @@ Objetivo funcional
 - Guardar eventos relevantes y generar reportes.
 
 Arquitectura general
-- Backend: servicio principal en Node.js con TypeScript.
+- Backend: servicio principal en Python (FastAPI + Socket.IO).
 - Frontend: dashboard web para visualizacion y operacion.
-- Modulo de vision en tiempo real: app de deteccion y emision de frames/detecciones.
+- Modulo de vision en tiempo real: inferencia YOLO en backend a partir de frames enviados por el cliente web.
 - Integracion por HTTP y MQTT para ingestar eventos.
 - Canal WebSocket con snapshots en vivo para clientes conectados.
 - Soporte Docker Compose para levantar servicios.
@@ -51,7 +51,7 @@ Flujo operativo de alto nivel
 5. La ESP32 consulta periodicamente el estado resumido y actualiza su pagina local de color.
 
 Tecnologias usadas
-- Node.js, TypeScript, Express, Socket.IO, MQTT, Zod, LowDB, PDFKit.
+- Python 3.11, FastAPI, Uvicorn, python-socketio, paho-mqtt, pydantic, ultralytics (YOLO), opencv-python-headless, reportlab.
 - Frontend web con JavaScript y estilos utilitarios.
 - ESP32 con WiFi, servidor web embebido y consulta HTTP/HTTPS.
 - Docker Compose para orquestacion local.

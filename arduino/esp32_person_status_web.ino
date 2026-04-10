@@ -64,7 +64,34 @@ void handleRoot() {
 }
 
 void updatePresenceFromJson(const String& body) {
-  // Espera JSON como: {"personDetected":true,"vehicleOnlyDetected":false,...}
+  // Espera JSON como: {"state":"GREEN|RED|GRAY","personDetected":true,"vehicleOnlyDetected":false,...}
+  // 1) Ruta principal: estado discreto (mas estable ante cambios de orden del JSON)
+  int stateKeyPos = body.indexOf("\"state\"");
+  if (stateKeyPos >= 0) {
+    int greenPos = body.indexOf("\"GREEN\"", stateKeyPos);
+    int redPos = body.indexOf("\"RED\"", stateKeyPos);
+    int grayPos = body.indexOf("\"GRAY\"", stateKeyPos);
+
+    if (greenPos >= 0) {
+      personDetected = true;
+      vehicleOnlyDetected = false;
+      return;
+    }
+
+    if (redPos >= 0) {
+      personDetected = false;
+      vehicleOnlyDetected = true;
+      return;
+    }
+
+    if (grayPos >= 0) {
+      personDetected = false;
+      vehicleOnlyDetected = false;
+      return;
+    }
+  }
+
+  // 2) Respaldo: lectura por banderas booleanas
   int keyPos = body.indexOf("\"personDetected\"");
   if (keyPos < 0) return;
 
@@ -105,6 +132,7 @@ void pollBackendStatus() {
     WiFiClientSecure client;
     client.setInsecure();
     HTTPClient https;
+    https.setTimeout(1800);
 
     if (https.begin(client, url)) {
       int code = https.GET();
@@ -118,6 +146,7 @@ void pollBackendStatus() {
 
   WiFiClient client;
   HTTPClient http;
+  http.setTimeout(1800);
   if (http.begin(client, url)) {
     int code = http.GET();
     if (code == 200) {

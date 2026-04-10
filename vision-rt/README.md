@@ -1,4 +1,7 @@
-# Vision RT (detección de siniestros viales)
+# Vision RT (modulo legado standalone)
+
+Este modulo se mantiene solo como referencia/ejecucion independiente.
+La ruta integrada `/vision` en el backend principal ya no esta habilitada.
 
 Sistema web en tiempo real con visión por cámara, tracking multiobjeto, cálculo de riesgo y emisión por Socket.IO.
 
@@ -19,11 +22,7 @@ npm install
 npm start
 ```
 
-Abrir en modo unificado (recomendado):
-
-- `http://localhost:4000/vision`
-
-Modo standalone (opcional, si corres `vision-rt` aparte):
+Abrir en modo standalone:
 
 - `http://localhost:3000`
 
@@ -31,7 +30,7 @@ Modo standalone (opcional, si corres `vision-rt` aparte):
 
 Si Brave bloquea modelos de IA (TFJS/coco-ssd/handpose):
 
-1. Abrir `http://localhost:4000/vision`
+1. Abrir `http://localhost:3000`
 2. Desactivar Shields para este sitio
 3. Recargar
 
@@ -115,14 +114,7 @@ O dinámicamente con:
 mapAdapter.setMapBounds({ north, south, east, west });
 ```
 
-## Uso con Docker Compose del proyecto (un solo localhost)
+## Nota de integracion
 
-Desde la raíz del repo:
-
-```bash
-docker compose up --build
-```
-
-Luego abre:
-
-- `http://localhost:4000/vision`
+Este modulo no forma parte del flujo principal con Docker Compose del proyecto.
+Si necesitas usarlo, ejecútalo de forma independiente con `npm start` en esta carpeta.

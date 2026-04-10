@@ -8,7 +8,7 @@ Sistema edge-to-cloud para reducir mortalidad de peatones en pasos de cebra bajo
 
 ## Avances Nuevos del Proyecto (Actualizado)
 
-- Unificación del stack en una sola app de backend: dashboard principal en `/`, visor móvil en `/viewer.html` y módulo de visión en `/vision`.
+- Unificación del stack en una sola app de backend: dashboard principal en `/` y visor móvil en `/viewer.html`, con inferencia de visión ejecutada en backend Python vía API.
 - Soporte de ingesta híbrida en tiempo real por `HTTP` y `MQTT`, con validación estricta del payload usando `pydantic`.
 - Motor de riesgo operativo con métricas `TTC`, `PET`, predicción de conflicto a 1-5s y clasificación `BAJO|MEDIO|ALTO|CRITICO`.
 - Persistencia local de eventos near-miss en JSON y tope de retención para mantener rendimiento de demo.
@@ -48,12 +48,6 @@ Librerías cargadas en dashboard y visor (`frontend/index.html`, `frontend/viewe
 - `qrcodejs` (CDN): generación de QR para onboarding móvil y activación de visor.
 - Motor de visión en frontend: no aplica. La inferencia se ejecuta 100% en backend Python (YOLO).
 
-Librerías del módulo `vision-rt` (`vision-rt/package.json` + `vision-rt/index.html`, legado opcional):
-
-- `express`: servidor standalone opcional para la vista de visión.
-- `socket.io`: emisión de `state_update` y `objects_update` al ecosistema en tiempo real.
-- `tfjs + coco-ssd + handpose` (CDN): stack de visión del módulo de streaming y tracking.
-
 ## Funcionalidades Backend (línea por línea)
 
 - `POST /api/vision/infer`: recibe frame base64, ejecuta YOLO en backend, actualiza tracking/riesgo y devuelve tracks + telemetría.
@@ -67,12 +61,13 @@ Librerías del módulo `vision-rt` (`vision-rt/package.json` + `vision-rt/index.
 - `GET /api/network-qr`: detecta IPs LAN y publica URL primaria para QR móvil.
 - `GET /api/esp32/person-status`: expone estado peatonal/vehicular para integración hardware.
 - `GET /esp32/light`: página semáforo web (verde/rojo/gris) con auto-refresh para ESP32/pantalla simple.
+- Estados de semáforo: `GREEN` (persona detectada), `RED` (solo vehiculo detectado), `GRAY` (sin deteccion).
 - Ingesta MQTT opcional: consume tópico configurado y procesa pipeline completo igual que HTTP.
 - Tracking temporal: estimación de velocidad, heading a cebra, cruce en zona y trayectoria predicha 1-5s.
 - Evaluación de riesgo: combina factores de contexto vial + TTC/PET + predicción futura de conflicto.
 - Gestión de cerca invisible: sincroniza activación/desactivación multi-cliente con radio fijo de 50m.
 - Registro de dispositivos conectados: dashboard/visor, metadatos de cliente y ubicación reportada.
-- Servido unificado de activos: frontend principal, viewer, data de demo y módulo vision-rt desde un solo backend.
+- Servido unificado de activos: frontend principal, viewer y data de demo desde un solo backend.
 
 ## Funcionalidades Frontend (línea por línea)
 
@@ -177,6 +172,18 @@ python -m uvicorn backend_py.app.main:get_asgi_app --factory --host 0.0.0.0 --po
 ```
 
 Servidor en red local (Docker): `https://192.168.2.245:4000`
+
+### Configuracion segura para ESP32 (evitar conflictos)
+
+Para que la placa no falle al consultar estado y mostrar luces, alinea estos valores:
+
+- `docker-compose.yml` -> `LAN_IP` debe coincidir con la IP real del PC en la red.
+- `arduino/esp32_person_status_web.ino` -> `BACKEND_HOST` debe ser esa misma IP.
+- `arduino/esp32_person_status_web.ino` -> `USE_HTTPS=true` si el backend corre con TLS en `:4000`.
+- Endpoint de prueba: `https://<LAN_IP>:4000/api/esp32/person-status`.
+- Vista de luces de prueba: `https://<LAN_IP>:4000/esp32/light`.
+
+Si cambias de red WiFi, actualiza `LAN_IP` y `BACKEND_HOST` antes de volver a subir el firmware.
 
 ### 3) Abrir Dashboard
 
@@ -459,7 +466,7 @@ Proyecto orientado a impacto público, innovación tecnológica y despliegue rá
 ## Documentación técnica completa
 
 - Especificaciones funcionales y no funcionales
-- Librerías y stack usado (frontend/backend/infra)
+- Librerías y stack usado (frontend/backend_py/infra)
 - Contratos de datos (`state_update`, `objects_update`)
 - Patrones de diseño aplicados
 - Parámetros de ajuste y pruebas manuales
