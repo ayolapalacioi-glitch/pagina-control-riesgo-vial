@@ -6,9 +6,107 @@ Sistema edge-to-cloud para reducir mortalidad de peatones en pasos de cebra bajo
 
 **Tecnología al servicio de la vida. Priorizando al peatón más vulnerable para avanzar hacia cero muertes y lesiones graves en el tránsito en Colombia.**
 
+## Avances Nuevos del Proyecto (Actualizado)
+
+- Unificación del stack en una sola app de backend: dashboard principal en `/`, visor móvil en `/viewer.html` y módulo de visión en `/vision`.
+- Soporte de ingesta híbrida en tiempo real por `HTTP` y `MQTT`, con validación estricta del payload usando `zod`.
+- Motor de riesgo operativo con métricas `TTC`, `PET`, predicción de conflicto a 1-5s y clasificación `BAJO|MEDIO|ALTO|CRITICO`.
+- Persistencia local de eventos near-miss con `lowdb` y tope de retención para mantener rendimiento de demo.
+- Exportación lista para operación pública: reportes `CSV` y `PDF` desde API.
+- Mapa táctico con capas de demografía, siniestralidad histórica, calor de riesgo, tracks vivos y cerca invisible.
+- Sincronización multi-dispositivo de cerca invisible (50m) por `Socket.IO` para dashboard + celulares conectados.
+- Flujo QR fortalecido: generación de enlace de red, QR gráfico y activación automática del modo visor.
+- Pipeline de cámara PC robustecido: filtros por confianza/tamaño, deduplicación NMS, tracking temporal, smoothing y autorecuperación del detector.
+- Detección de eventos enriquecidos en vivo: `ambulancia` (heurística visual), `gesto` (handpose), `animal` y señalización.
+- Gestión de dispositivos conectados en tiempo real con identificación, tipo de cliente y ubicación GPS.
+- Señal de presencia peatonal/vehicular para integración con semáforo/luz ESP32 (`/esp32/light` y `/api/esp32/person-status`).
+- Arranque seguro para demo móvil con túnel HTTPS de Cloudflare y publicación automática de URL pública para QR.
+- Certificado TLS autofirmado automático en contenedor backend, regenerado según IP LAN para facilitar pruebas móviles.
+
+## Librerías Backend (línea por línea)
+
+Dependencias de runtime (`backend/package.json`):
+
+- `express`: servidor HTTP/HTTPS, API REST y publicación de frontend estático.
+- `cors`: habilita consumo de API y sockets desde clientes web en distintas procedencias.
+- `socket.io`: canal bidireccional en tiempo real para snapshots, objetos, estado, cerca y dispositivos.
+- `mqtt`: suscripción a tópicos de edge para ingesta desde cámaras/sensores YOLO.
+- `zod`: validación tipada y estricta del payload de ingesta.
+- `lowdb`: persistencia JSON local de eventos near-miss para modo demo.
+- `csv-stringify`: serialización de eventos hacia exportables CSV.
+- `pdfkit`: generación de reporte PDF diario con indicadores y eventos recientes.
+- `dotenv`: carga de configuración por entorno (`PORT`, `MQTT_*`, `USE_MQTT`, etc.).
+- `chart.js`: dependencia instalada en backend para mantener compatibilidad de stack analítico; el render principal de gráficas ocurre en frontend.
+
+Dependencias de desarrollo (`backend/package.json`):
+
+- `typescript`: tipado estático para servicios de riesgo, tracking y contratos.
+- `tsx`: ejecución y watch en desarrollo sin build manual intermedio.
+- `@types/node`: tipos de Node.js para módulos de sistema, red y archivos.
+- `@types/express`: tipos para handlers y middleware de Express.
+- `@types/cors`: tipos para configuración CORS.
+- `@types/pdfkit`: tipos para composición de reportes PDF.
+
+## Librerías Frontend (línea por línea)
+
+Librerías cargadas en dashboard y visor (`frontend/index.html`, `frontend/viewer.html`, `frontend/js/dashboard.js`):
+
+- `socket.io-client` (CDN): sincronización de estado, objetos, riesgos, cerca y presencia de dispositivos.
+- `leaflet` (CDN): render de mapa base, marcadores, círculos de riesgo y capas de control.
+- `leaflet.heat` (CDN): visualización de heatmap para concentración de eventos near-miss.
+- `chart.js` (CDN): gráficas en vivo de tendencia y distribución vehicular.
+- `qrcodejs` (CDN): generación de QR para onboarding móvil y activación de visor.
+- `@tensorflow/tfjs` (CDN dinámico): runtime de inferencia para visión en navegador.
+- `@tensorflow-models/coco-ssd` (CDN dinámico): detector base de objetos en modo compatibilidad.
+- `@tensorflow-models/handpose` (CDN dinámico): detección de manos/gestos para eventos especiales.
+
+Librerías del módulo `vision-rt` (`vision-rt/package.json` + `vision-rt/index.html`):
+
+- `express`: servidor standalone opcional para la vista de visión.
+- `socket.io`: emisión de `state_update` y `objects_update` al ecosistema en tiempo real.
+- `tfjs + coco-ssd + handpose` (CDN): stack de visión del módulo de streaming y tracking.
+
+## Funcionalidades Backend (línea por línea)
+
+- `POST /api/ingest`: valida frame YOLO normalizado, actualiza tracking, calcula riesgo, emite snapshot y persiste eventos altos/críticos.
+- `POST /api/simulate/offline`: reproduce dataset offline para demo sin hardware.
+- `GET /api/events`: devuelve histórico de eventos near-miss guardados.
+- `GET /api/stats`: agrega métricas por periodo (`hour|day|week`) con conteo de riesgo y distribución horaria.
+- `GET /api/report/traffic`: entrega conteo acumulado por clase y por cámara con tracks activos.
+- `GET /api/export/csv`: descarga evidencia tabular para análisis o entrega institucional.
+- `GET /api/export/pdf`: genera reporte diario resumido para presentación operativa.
+- `GET /api/network-qr`: detecta IPs LAN y publica URL primaria para QR móvil.
+- `GET /api/esp32/person-status`: expone estado peatonal/vehicular para integración hardware.
+- `GET /esp32/light`: página semáforo web (verde/rojo/gris) con auto-refresh para ESP32/pantalla simple.
+- Ingesta MQTT opcional: consume tópico configurado y procesa pipeline completo igual que HTTP.
+- Tracking temporal: estimación de velocidad, heading a cebra, cruce en zona y trayectoria predicha 1-5s.
+- Evaluación de riesgo: combina factores de contexto vial + TTC/PET + predicción futura de conflicto.
+- Gestión de cerca invisible: sincroniza activación/desactivación multi-cliente con radio fijo de 50m.
+- Registro de dispositivos conectados: dashboard/visor, metadatos de cliente y ubicación reportada.
+- Servido unificado de activos: frontend principal, viewer, data de demo y módulo vision-rt desde un solo backend.
+
+## Funcionalidades Frontend (línea por línea)
+
+- Dashboard de control con KPIs en vivo para peatones, motos, autos y buses.
+- Visualización cartográfica multicapa con riesgo acumulado, calor, demografía y siniestralidad histórica.
+- Simulación de múltiples cámaras para narrativa de escalabilidad metropolitana.
+- Modo demo offline con replay de frames sample sin necesidad de cámara ni edge real.
+- Modo cámara PC con detección en vivo y envío periódico de frames al backend.
+- Robustez anti-flicker: filtros de score/tamaño, deduplicación por IoU, smoothing de tracks y tolerancia a pérdidas.
+- Recuperación automática del detector tras rachas de error para evitar caída de demo.
+- Heurística de ambulancia por patrón cromático y soporte de evento de gesto con handpose.
+- Telemetría visual de riesgo (`TTC`, `PET`, `vRel`) y lista de objetos en seguimiento.
+- Alertas multimodales (visual + beep + voz) ante riesgo crítico.
+- Exportación directa de CSV/PDF desde botones del panel.
+- Generación de QR de red con copia rápida de enlace y fallback gráfico.
+- Sincronización de cerca invisible por QR y actualización continua de ubicación del dispositivo emisor.
+- Viewer ciudadano móvil con GPS en tiempo real, geocerca local y alertas de riesgo cercano.
+- Fallback de ubicación por IP/red cuando no se obtiene geolocalización precisa.
+- Reintento automático de GPS por visibilidad/gesto para mejorar onboarding móvil.
+
 ## Arquitectura General
 
-- **Edge AI**: SenseCraft AI + modelo custom YOLO (v8/v11) detecta actores viales por frame.
+- **Edge AI**: modelo YOLO custom (v8/v11) para detección de actores viales por frame.
 - **Backend Node.js 20 + TypeScript**:
   - Ingesta por `MQTT` o `HTTP POST`.
   - Tracking por `track_id` (fallback básico por clase/índice).
@@ -16,7 +114,7 @@ Sistema edge-to-cloud para reducir mortalidad de peatones en pasos de cebra bajo
   - Persistencia de near-miss en `lowdb` (JSON local para demo competitiva).
   - Emisión en tiempo real a dashboard con `Socket.io`.
 
-### Modelos SenseCraft soportados (ingesta)
+### Clases YOLO soportadas (ingesta)
 
 El backend acepta y procesa estas clases en `detections[].class_name`:
 
@@ -33,7 +131,7 @@ El backend acepta y procesa estas clases en `detections[].class_name`:
 - `aparcamiento`
 - `senal_paso`
 
-Esto permite integrar modelos SenseCraft especializados para: buses, bicicletas, gestos, estacionamiento, señalización de paso y ambulancias.
+Esto permite integrar un pipeline YOLO especializado para: buses, bicicletas, gestos, estacionamiento, señalización de paso y ambulancias.
 - **Frontend Smart-City**:
   - KPIs en vivo, alerta visual/sonora/voz.
   - Mapa Leaflet + OSM con capas de cámaras, heatmap, choropleth demográfico y riesgo acumulado.
@@ -62,7 +160,6 @@ proyecto-seguridad-vial/
 │   ├── js/map.js
 │   └── assets/
 ├── data/
-│   ├── sample-sensecraft-json.json
 │   ├── mock-near-miss-events.json
 │   └── geojson-cartagena-manzanas-demografico-sample.json
 ├── docker-compose.yml
@@ -176,7 +273,7 @@ Esto limpia contenedores huérfanos y reinicia las dependencias del backend si q
 
 1. Inicia backend.
 2. En el dashboard, clic en **Modo Demo Offline**.
-3. El sistema procesa `data/sample-sensecraft-json.json`.
+3. El sistema procesa el archivo de muestra de detecciones ubicado en `data/`.
 4. Observa:
    - KPIs en vivo
    - nivel de riesgo
@@ -196,8 +293,8 @@ Esto limpia contenedores huérfanos y reinicia las dependencias del backend si q
 
 Notas:
 
-- En modo cámara PC se usa IA en navegador (COCO-SSD) como fallback de demo; la ingesta mantiene el mismo esquema SenseCraft en backend.
-- Para `gesto`, `ambulancia`, `peaton_aereo` y `movimiento_peaton` en producción, se recomienda enviar esas clases desde el modelo custom de SenseCraft (edge), porque el fallback del navegador no está entrenado específicamente para todas ellas.
+- En modo producción, la detección oficial es YOLO (edge) y la ingesta backend usa ese esquema normalizado.
+- Para `gesto`, `ambulancia`, `peaton_aereo` y `movimiento_peaton`, se recomienda mantener entrenamiento YOLO específico por clase para máxima precisión operacional.
 - La app intenta usar la geolocalización actual del equipo para ubicar la cámara en el mapa.
 - Si no hay permiso de ubicación, usa coordenadas de Cartagena por defecto.
 
@@ -285,7 +382,7 @@ powershell -ExecutionPolicy Bypass -File "C:\Users\ayola\OneDrive\Desktop\Proyec
 El script (Cloudflare, sin password):
 
 - levanta Docker (`backend` + `mosquitto`),
-- crea túnel HTTPS con LocalTunnel,
+- crea túnel HTTPS con Cloudflare Tunnel,
 - imprime URL HTTPS de dashboard y viewer,
 - y copia la URL del dashboard al portapapeles.
 
@@ -318,7 +415,7 @@ Payload esperado (ejemplo):
 - Configura `.env`:
   - `USE_MQTT=true`
   - `MQTT_BROKER_URL=mqtt://localhost:1883`
-  - `MQTT_TOPIC=sensecraft/crosswalk/cam-001`
+  - `MQTT_TOPIC=yolo/crosswalk/cam-001`
 
 ## Lógica de Riesgo (resumen técnico)
 
@@ -352,7 +449,7 @@ cd backend
 npm run seed
 ```
 
-Genera frames sintéticos en `data/sample-sensecraft-json.json`.
+Genera frames sintéticos en el archivo de muestra de detecciones dentro de `data/`.
 
 ## Cómo impresionar al jurado (guion de 5 minutos)
 
