@@ -5,3 +5,6 @@ vision-rt/node_modules/
 *.log
 .env
 backend/.env
+__pycache__/
+**/__pycache__/
+*.pyc
