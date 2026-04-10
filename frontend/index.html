@@ -63,6 +63,42 @@
           <div id="riskDetails" style="margin-top:8px; color: var(--muted);">Sin eventos críticos recientes.</div>
         </div>
         <div class="card">
+          <h3>Control ESP32 Peatonal</h3>
+          <div id="esp32SignalPill" class="risk-pill risk-medio">⚪ SIN SOLICITUD</div>
+          <div id="esp32ConnectionMeta" style="margin-top:8px; color: var(--muted);">ESP32: sin conexión detectada</div>
+          <div id="esp32ButtonMeta" style="margin-top:8px; color: var(--muted);">Botón: sin datos</div>
+          <div id="esp32DecisionMeta" style="margin-top:6px; color: var(--muted);">Esperando eventos de botón y cámara.</div>
+          <div style="margin-top:10px; display:grid; gap:8px;">
+            <label>Modo de control
+              <select id="esp32ManualOverrideState">
+                <option value="AUTO">AUTO (camara + boton + riesgo)</option>
+                <option value="GREEN">FORZAR VERDE</option>
+                <option value="RED">FORZAR ROJO</option>
+                <option value="GRAY">FORZAR GRIS</option>
+              </select>
+            </label>
+            <label>TTL solicitud botón (ms)
+              <input id="esp32RequestTtlMs" type="number" min="1000" step="100" value="20000" />
+            </label>
+            <label>Debounce botón backend (ms)
+              <input id="esp32ButtonDebounceMs" type="number" min="20" step="10" value="140" />
+            </label>
+            <label>Hold verde (ms)
+              <input id="esp32HoldGreenMs" type="number" min="100" step="50" value="900" />
+            </label>
+            <label>Hold rojo (ms)
+              <input id="esp32HoldRedMs" type="number" min="100" step="50" value="900" />
+            </label>
+            <label>Hold gris (ms)
+              <input id="esp32HoldGrayMs" type="number" min="100" step="50" value="500" />
+            </label>
+            <label>Timeout conexión ESP32 (ms)
+              <input id="esp32HeartbeatTimeoutMs" type="number" min="2000" step="500" value="12000" />
+            </label>
+            <button id="btnSaveEsp32Config">Guardar configuración ESP32</button>
+          </div>
+        </div>
+        <div class="card">
           <h3>Tendencia por Hora</h3>
           <canvas id="hourlyChart" height="180"></canvas>
         </div>

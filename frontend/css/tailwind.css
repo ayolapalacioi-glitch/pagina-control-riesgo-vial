@@ -53,6 +53,21 @@ button {
   cursor: pointer;
 }
 button:hover { opacity: 0.9; }
+label {
+  display: grid;
+  gap: 4px;
+  font-size: .85rem;
+  color: var(--muted);
+}
+input,
+select {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #2a4065;
+  background: rgba(8, 19, 34, 0.65);
+  color: var(--text);
+  padding: 8px;
+}
 .list { max-height: 240px; overflow: auto; font-size: .9rem; }
 .list-item { padding: 8px; border-bottom: 1px solid #24385d; }
 .camera-wrap {

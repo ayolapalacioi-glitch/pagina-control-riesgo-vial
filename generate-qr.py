@@ -5,36 +5,37 @@ Uso:  python generate-qr.py [ip] [puerto]
 import sys
 import os
 import subprocess
+from urllib.parse import quote
+from urllib.request import urlretrieve
 
 # ── Parámetros ────────────────────────────────────────────────────────────────
 ip   = sys.argv[1] if len(sys.argv) > 1 else "192.168.2.245"
 port = sys.argv[2] if len(sys.argv) > 2 else "4000"
 url  = f"https://{ip}:{port}/viewer.html?qr=1"
 
-# ── Instalar qrcode si no está ────────────────────────────────────────────────
+# ── Intentar QR local; fallback remoto sin instalar paquetes ──────────────────
 try:
     import qrcode
-    from PIL import Image
 except ImportError:
-    print("[QR] Instalando dependencias (qrcode, pillow)...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "qrcode[pil]", "--quiet"])
-    import qrcode
-    from PIL import Image
+    qrcode = None
 
 # ── Generar imagen ────────────────────────────────────────────────────────────
-qr = qrcode.QRCode(
-    version=None,
-    error_correction=qrcode.constants.ERROR_CORRECT_M,
-    box_size=12,
-    border=3,
-)
-qr.add_data(url)
-qr.make(fit=True)
-
-img = qr.make_image(fill_color="#111827", back_color="white")
-
 out_path = os.path.join(os.path.dirname(__file__), "qr-viewer-local.png")
-img.save(out_path)
+
+if qrcode is not None:
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=12,
+        border=3,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#111827", back_color="white")
+    img.save(out_path)
+else:
+    fallback_qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=640x640&data={quote(url, safe='')}"
+    urlretrieve(fallback_qr_url, out_path)
 
 print(f"\n  QR generado: {out_path}")
 print(f"  URL:         {url}\n")

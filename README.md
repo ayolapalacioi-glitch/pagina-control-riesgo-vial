@@ -20,6 +20,8 @@ Sistema edge-to-cloud para reducir mortalidad de peatones en pasos de cebra bajo
 - Detección de eventos enriquecidos en backend: `ambulancia`, `movimiento_peaton`, `senal_paso` y clases vehiculares/peatonales de operación vial.
 - Gestión de dispositivos conectados en tiempo real con identificación, tipo de cliente y ubicación GPS.
 - Señal de presencia peatonal/vehicular para integración con semáforo/luz ESP32 (`/esp32/light` y `/api/esp32/person-status`).
+- Integración directa con ESP32 por heartbeat + polling con detección online/offline en dashboard.
+- Configuración remota del semáforo ESP32 desde la web: TTL de solicitud, debounce backend, tiempos hold (`GREEN/RED/GRAY`) y modo manual (`AUTO/GREEN/RED/GRAY`).
 - Arranque seguro para demo móvil con túnel HTTPS de Cloudflare y publicación automática de URL pública para QR.
 - Certificado TLS autofirmado automático en contenedor backend, regenerado según IP LAN para facilitar pruebas móviles.
 
@@ -60,6 +62,10 @@ Librerías cargadas en dashboard y visor (`frontend/index.html`, `frontend/viewe
 - `GET /api/export/pdf`: genera reporte diario resumido para presentación operativa.
 - `GET /api/network-qr`: detecta IPs LAN y publica URL primaria para QR móvil.
 - `GET /api/esp32/person-status`: expone estado peatonal/vehicular para integración hardware.
+- `POST /api/esp32/button`: recibe pulsación del botón peatonal ESP32 y sincroniza la decisión con cámara/riesgo.
+- `POST /api/esp32/heartbeat`: latido de conexión de la ESP32 para monitoreo online/offline.
+- `GET /api/esp32/runtime`: estado consolidado para dashboard (`signal + connection + config`).
+- `POST /api/esp32/config`: actualiza parámetros de control del semáforo desde la web.
 - `GET /esp32/light`: página semáforo web (verde/rojo/gris) con auto-refresh para ESP32/pantalla simple.
 - Estados de semáforo: `GREEN` (persona detectada), `RED` (solo vehiculo detectado), `GRAY` (sin deteccion).
 - Ingesta MQTT opcional: consume tópico configurado y procesa pipeline completo igual que HTTP.
@@ -182,8 +188,33 @@ Para que la placa no falle al consultar estado y mostrar luces, alinea estos val
 - `arduino/esp32_person_status_web.ino` -> `USE_HTTPS=true` si el backend corre con TLS en `:4000`.
 - Endpoint de prueba: `https://<LAN_IP>:4000/api/esp32/person-status`.
 - Vista de luces de prueba: `https://<LAN_IP>:4000/esp32/light`.
+- Runtime para dashboard: `https://<LAN_IP>:4000/api/esp32/runtime`.
 
 Si cambias de red WiFi, actualiza `LAN_IP` y `BACKEND_HOST` antes de volver a subir el firmware.
+El pin sugerido para el botón en ESP32 es `GPIO18` (configurable en `arduino/esp32_person_status_web.ino`).
+
+### Control web del semáforo ESP32
+
+En el dashboard, tarjeta **Control ESP32 Peatonal**:
+
+- Visualiza en tiempo real: estado semafórico, botón, motivo de decisión y conexión online/offline de la ESP32.
+- Permite configurar desde web:
+  - `request_ttl_ms`
+  - `button_debounce_ms` (backend)
+  - `min_hold_green_ms`
+  - `min_hold_red_ms`
+  - `min_hold_gray_ms`
+  - `heartbeat_timeout_ms`
+  - `manual_override_state` (`AUTO`, `GREEN`, `RED`, `GRAY`)
+
+Lógica operativa en `AUTO`:
+
+- Sin solicitud de botón: `GRAY`
+- Solicitud activa + peligro (`ALTO/CRITICO` o conflicto vehicular): `RED`
+- Solicitud activa + persona detectada sin peligro: `GREEN`
+- Solicitud activa + sin actores: `GRAY`
+
+Incluye filtros anti-rebote y anti-parpadeo para estabilidad en campo.
 
 ### 3) Abrir Dashboard
 
@@ -200,6 +231,43 @@ Desde la raíz del proyecto:
 ```bash
 docker compose up --build -d
 ```
+
+Arranque recomendado para uso diario (más rápido) en PowerShell:
+
+```powershell
+.\start-run.ps1
+```
+
+Si necesitas reconstruir imágenes explícitamente:
+
+```powershell
+.\start-run.ps1 -Rebuild
+```
+
+Opcional (sin esperar generación de QR local):
+
+```powershell
+.\start-run.ps1 -NoQr
+```
+
+## Trabajo en equipo (actualizar cambios)
+
+Para que tus compañeros bajen esta versión sin conflictos:
+
+```bash
+git checkout main
+git pull origin main
+```
+
+Si tienen cambios locales sin commit:
+
+```bash
+git stash
+git pull origin main
+git stash pop
+```
+
+Después del pull, recompilar firmware ESP32 y reiniciar backend para aplicar nuevos endpoints/configuración.
 
 Con eso se levantan:
 

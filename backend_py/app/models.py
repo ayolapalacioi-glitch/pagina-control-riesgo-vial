@@ -90,3 +90,27 @@ class VisionInferResponse(BaseModel):
     metrics: dict[str, Any]
     envelope: dict[str, Any]
     events: list[dict[str, Any]]
+
+
+class Esp32ButtonUpdateRequest(BaseModel):
+    pressed: bool
+    device_id: str = "esp32"
+    source: str = "hardware_button"
+    request_ttl_ms: Optional[int] = None
+    cancel_request: bool = False
+
+
+class Esp32HeartbeatRequest(BaseModel):
+    device_id: str = "esp32"
+    source: str = "poll"
+
+
+class Esp32ConfigUpdateRequest(BaseModel):
+    request_ttl_ms: Optional[int] = None
+    button_debounce_ms: Optional[int] = None
+    min_hold_green_ms: Optional[int] = None
+    min_hold_red_ms: Optional[int] = None
+    min_hold_gray_ms: Optional[int] = None
+    force_emit_ms: Optional[int] = None
+    heartbeat_timeout_ms: Optional[int] = None
+    manual_override_state: Optional[Literal["AUTO", "GREEN", "RED", "GRAY"]] = None

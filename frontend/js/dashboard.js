@@ -32,6 +32,18 @@ const REALTIME_WINDOW = 60;
 
 const riskPill = document.getElementById('riskPill');
 const riskDetails = document.getElementById('riskDetails');
+const esp32SignalPill = document.getElementById('esp32SignalPill');
+const esp32ConnectionMeta = document.getElementById('esp32ConnectionMeta');
+const esp32ButtonMeta = document.getElementById('esp32ButtonMeta');
+const esp32DecisionMeta = document.getElementById('esp32DecisionMeta');
+const esp32ManualOverrideState = document.getElementById('esp32ManualOverrideState');
+const esp32RequestTtlMs = document.getElementById('esp32RequestTtlMs');
+const esp32ButtonDebounceMs = document.getElementById('esp32ButtonDebounceMs');
+const esp32HoldGreenMs = document.getElementById('esp32HoldGreenMs');
+const esp32HoldRedMs = document.getElementById('esp32HoldRedMs');
+const esp32HoldGrayMs = document.getElementById('esp32HoldGrayMs');
+const esp32HeartbeatTimeoutMs = document.getElementById('esp32HeartbeatTimeoutMs');
+const btnSaveEsp32Config = document.getElementById('btnSaveEsp32Config');
 const eventList = document.getElementById('eventList');
 const modelCounts = document.getElementById('modelCounts');
 const cameraVideo = document.getElementById('cameraVideo');
@@ -54,6 +66,10 @@ const cameraCtx = cameraCanvas.getContext('2d');
 
 const captureCanvas = document.createElement('canvas');
 const captureCtx = captureCanvas.getContext('2d', { willReadFrequently: true });
+
+let lastEsp32ButtonPressed = null;
+let lastEsp32SignalState = null;
+let lastEsp32Online = null;
 
 function riskView(level) {
   const map = {
@@ -236,6 +252,96 @@ function updateRiskUi(metrics) {
   liveTTC.textContent = `${formatNum(metrics.ttc)}s`;
   livePET.textContent = `${formatNum(metrics.pet)}s`;
   liveVRel.textContent = `${formatNum(metrics.vRel, 1)} px/s`;
+}
+
+function esp32SignalView(state) {
+  const map = {
+    GREEN: { cls: 'risk-bajo', emoji: '🟢', label: 'PASO PEATONAL' },
+    RED: { cls: 'risk-critico', emoji: '🔴', label: 'ALTO RIESGO' },
+    GRAY: { cls: 'risk-medio', emoji: '⚪', label: 'EN ESPERA' }
+  };
+  return map[state] || map.GRAY;
+}
+
+function renderEsp32Signal(payload) {
+  if (!payload || !esp32SignalPill) return;
+
+  const state = payload.state || 'GRAY';
+  const view = esp32SignalView(state);
+  esp32SignalPill.className = `risk-pill ${view.cls}`;
+  esp32SignalPill.textContent = `${view.emoji} ${view.label}`;
+
+  const buttonPressed = !!payload.buttonPressed;
+  const requestActive = !!payload.requestActive;
+  const riskLevel = payload.riskLevel || 'N/A';
+  const decision = payload.decisionReason || 'SIN_DECISION';
+
+  esp32ButtonMeta.textContent = `Botón: ${buttonPressed ? 'presionado' : 'liberado'} | Solicitud: ${requestActive ? 'activa' : 'inactiva'}`;
+  esp32DecisionMeta.textContent = `Decision: ${decision} | Riesgo: ${riskLevel}`;
+
+  if (lastEsp32ButtonPressed !== buttonPressed) {
+    addRealtimeBadge(`ESP32 boton ${buttonPressed ? 'presionado' : 'liberado'}`);
+    pushEventLine(`${new Date().toLocaleTimeString()} | ESP32 boton ${buttonPressed ? 'presionado' : 'liberado'}`);
+    lastEsp32ButtonPressed = buttonPressed;
+  }
+
+  if (lastEsp32SignalState !== state) {
+    addRealtimeBadge(`ESP32 estado ${state}`);
+    pushEventLine(`${new Date().toLocaleTimeString()} | ESP32 estado ${state} | ${decision}`);
+    lastEsp32SignalState = state;
+  }
+}
+
+function renderEsp32Connection(connection) {
+  if (!connection || !esp32ConnectionMeta) return;
+  const online = !!connection.online;
+  const lastSeen = connection.lastSeenAt || 'N/A';
+  const sourceIp = connection.sourceIp || 'N/A';
+  const deviceId = connection.deviceId || 'esp32';
+  esp32ConnectionMeta.textContent = `ESP32: ${online ? 'ONLINE' : 'OFFLINE'} | id: ${deviceId} | ip: ${sourceIp} | lastSeen: ${lastSeen}`;
+
+  if (lastEsp32Online !== online) {
+    addRealtimeBadge(`ESP32 ${online ? 'online' : 'offline'}`);
+    pushEventLine(`${new Date().toLocaleTimeString()} | ESP32 ${online ? 'online' : 'offline'}`);
+    lastEsp32Online = online;
+  }
+}
+
+function applyEsp32ConfigToForm(config) {
+  if (!config) return;
+  if (esp32ManualOverrideState) esp32ManualOverrideState.value = config.manualOverrideState || 'AUTO';
+  if (esp32RequestTtlMs) esp32RequestTtlMs.value = config.requestTtlMs ?? 20000;
+  if (esp32ButtonDebounceMs) esp32ButtonDebounceMs.value = config.buttonDebounceMs ?? 140;
+  if (esp32HoldGreenMs) esp32HoldGreenMs.value = config.minHoldGreenMs ?? 900;
+  if (esp32HoldRedMs) esp32HoldRedMs.value = config.minHoldRedMs ?? 900;
+  if (esp32HoldGrayMs) esp32HoldGrayMs.value = config.minHoldGrayMs ?? 500;
+  if (esp32HeartbeatTimeoutMs) esp32HeartbeatTimeoutMs.value = config.heartbeatTimeoutMs ?? 12000;
+}
+
+async function saveEsp32ConfigFromForm() {
+  const payload = {
+    manual_override_state: esp32ManualOverrideState?.value || 'AUTO',
+    request_ttl_ms: Number(esp32RequestTtlMs?.value || 20000),
+    button_debounce_ms: Number(esp32ButtonDebounceMs?.value || 140),
+    min_hold_green_ms: Number(esp32HoldGreenMs?.value || 900),
+    min_hold_red_ms: Number(esp32HoldRedMs?.value || 900),
+    min_hold_gray_ms: Number(esp32HoldGrayMs?.value || 500),
+    heartbeat_timeout_ms: Number(esp32HeartbeatTimeoutMs?.value || 12000)
+  };
+
+  const response = await fetch(`${API_BASE}/esp32/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    throw new Error(`No se pudo guardar config ESP32 (${response.status})`);
+  }
+  const runtime = await response.json();
+  if (runtime?.signal) renderEsp32Signal(runtime.signal);
+  if (runtime?.connection) renderEsp32Connection(runtime.connection);
+  if (runtime?.config) applyEsp32ConfigToForm(runtime.config);
+  addRealtimeBadge('Config ESP32 guardada');
 }
 
 function drawTracks(tracks) {
@@ -569,6 +675,12 @@ function wireUi() {
   document.getElementById('btnShowQrLink').addEventListener('click', () => renderQrLinks().catch(() => null));
   document.getElementById('btnCsv').addEventListener('click', () => window.open(`${API_BASE}/export/csv`, '_blank'));
   document.getElementById('btnPdf').addEventListener('click', () => window.open(`${API_BASE}/export/pdf`, '_blank'));
+  btnSaveEsp32Config?.addEventListener('click', () => {
+    saveEsp32ConfigFromForm().catch((error) => {
+      addRealtimeBadge('Error guardando config ESP32');
+      pushEventLine(`${new Date().toLocaleTimeString()} | ${String(error?.message || 'error config ESP32')}`);
+    });
+  });
 
   const fireQr = () => {
     addRealtimeBadge('QR simulado');
@@ -633,6 +745,21 @@ socket.on('devices_update', (payload) => {
   renderConnectedDevices(payload);
 });
 
+socket.on('esp32_signal_update', (payload) => {
+  renderEsp32Signal(payload);
+});
+
+socket.on('esp32_runtime_update', (payload) => {
+  if (!payload) return;
+  if (payload.signal) renderEsp32Signal(payload.signal);
+  if (payload.connection) renderEsp32Connection(payload.connection);
+  if (payload.config) applyEsp32ConfigToForm(payload.config);
+});
+
+socket.on('esp32_config_update', (payload) => {
+  applyEsp32ConfigToForm(payload);
+});
+
 setInterval(() => {
   const msg = messages[Math.floor(Math.random() * messages.length)];
   document.getElementById('ansvMessage').textContent = msg;
@@ -643,6 +770,11 @@ wireUi();
 detectLocation().catch(() => null);
 startLocationWatch();
 renderQrLinks().catch(() => null);
+fetch(`${API_BASE}/esp32/runtime`).then((res) => res.json()).then((payload) => {
+  if (payload?.signal) renderEsp32Signal(payload.signal);
+  if (payload?.connection) renderEsp32Connection(payload.connection);
+  if (payload?.config) applyEsp32ConfigToForm(payload.config);
+}).catch(() => null);
 
 cameraStatus.textContent = 'Listo. Presiona "Abrir camara PC (IA)" para iniciar deteccion en backend.';
 liveEngine.textContent = 'YOLO Backend';

@@ -13,6 +13,13 @@ const char* HOSTNAME = "esp32-vial";
 const char* BACKEND_HOST = "192.168.2.245";
 const int BACKEND_PORT = 4000;
 
+// --- BOTON PEATONAL ---
+const int BUTTON_PIN = 18;
+const bool BUTTON_ACTIVE_LOW = true;
+const unsigned long BUTTON_DEBOUNCE_MS = 45;
+const unsigned long BUTTON_HEARTBEAT_MS = 7000;
+const unsigned long DEVICE_HEARTBEAT_MS = 5000;
+
 // true: consulta https://... (certificado autofirmado permitido)
 // false: consulta http://...
 const bool USE_HTTPS = true;
@@ -20,7 +27,13 @@ const bool USE_HTTPS = true;
 WebServer server(80);
 bool personDetected = false;
 bool vehicleOnlyDetected = false;
+bool buttonPressed = false;
+bool rawButtonState = false;
 unsigned long lastPollMs = 0;
+unsigned long lastDebounceMs = 0;
+unsigned long lastButtonSyncMs = 0;
+unsigned long lastDeviceHeartbeatMs = 0;
+String deviceId = "esp32";
 
 const char* wifiStatusText(wl_status_t status) {
   switch (status) {
@@ -57,7 +70,7 @@ void handleRoot() {
     "h1{font-size:clamp(22px,8vw,44px);margin:0;letter-spacing:.05em;}"
     "p{margin-top:10px;font-size:14px;opacity:.9;}"
     "</style></head><body>"
-    "<div class='c'><div><h1>" + txt + "</h1><p>Actualiza cada 1 segundo</p></div></div>"
+    "<div class='c'><div><h1>" + txt + "</h1><p>Actualiza cada 1 segundo</p><p>Boton: " + (buttonPressed ? String("PRESIONADO") : String("LIBERADO")) + "</p></div></div>"
     "</body></html>";
 
   server.send(200, "text/html", html);
@@ -123,6 +136,104 @@ void updatePresenceFromJson(const String& body) {
   }
 }
 
+bool readButtonPressed() {
+  int value = digitalRead(BUTTON_PIN);
+  return BUTTON_ACTIVE_LOW ? (value == LOW) : (value == HIGH);
+}
+
+void postButtonState(const char* sourceTag) {
+  String url = String(USE_HTTPS ? "https://" : "http://") +
+               BACKEND_HOST + ":" + String(BACKEND_PORT) +
+               "/api/esp32/button";
+
+  String body = String("{\"pressed\":") + (buttonPressed ? "true" : "false") +
+                ",\"device_id\":\"" + deviceId +
+                "\",\"source\":\"" + sourceTag + "\"}";
+
+  if (USE_HTTPS) {
+    WiFiClientSecure client;
+    client.setInsecure();
+    HTTPClient https;
+    https.setTimeout(1800);
+
+    if (https.begin(client, url)) {
+      https.addHeader("X-Device-Id", deviceId);
+      https.addHeader("X-Device-Source", sourceTag);
+      https.addHeader("Content-Type", "application/json");
+      https.POST(body);
+      https.end();
+    }
+    return;
+  }
+
+  WiFiClient client;
+  HTTPClient http;
+  http.setTimeout(1800);
+  if (http.begin(client, url)) {
+    http.addHeader("X-Device-Id", deviceId);
+    http.addHeader("X-Device-Source", sourceTag);
+    http.addHeader("Content-Type", "application/json");
+    http.POST(body);
+    http.end();
+  }
+}
+
+void postDeviceHeartbeat() {
+  String url = String(USE_HTTPS ? "https://" : "http://") +
+               BACKEND_HOST + ":" + String(BACKEND_PORT) +
+               "/api/esp32/heartbeat";
+
+  String body = String("{\"device_id\":\"") + deviceId +
+                "\",\"source\":\"poll\"}";
+
+  if (USE_HTTPS) {
+    WiFiClientSecure client;
+    client.setInsecure();
+    HTTPClient https;
+    https.setTimeout(1800);
+
+    if (https.begin(client, url)) {
+      https.addHeader("X-Device-Id", deviceId);
+      https.addHeader("X-Device-Source", "poll");
+      https.addHeader("Content-Type", "application/json");
+      https.POST(body);
+      https.end();
+    }
+    return;
+  }
+
+  WiFiClient client;
+  HTTPClient http;
+  http.setTimeout(1800);
+  if (http.begin(client, url)) {
+    http.addHeader("X-Device-Id", deviceId);
+    http.addHeader("X-Device-Source", "poll");
+    http.addHeader("Content-Type", "application/json");
+    http.POST(body);
+    http.end();
+  }
+}
+
+void syncButtonState() {
+  bool reading = readButtonPressed();
+
+  if (reading != rawButtonState) {
+    rawButtonState = reading;
+    lastDebounceMs = millis();
+  }
+
+  if ((millis() - lastDebounceMs) >= BUTTON_DEBOUNCE_MS && reading != buttonPressed) {
+    buttonPressed = reading;
+    lastButtonSyncMs = millis();
+    postButtonState("esp32_button_change");
+  }
+
+  if (buttonPressed && (millis() - lastButtonSyncMs) >= BUTTON_HEARTBEAT_MS) {
+    lastButtonSyncMs = millis();
+    postButtonState("esp32_button_heartbeat");
+  }
+}
+
 void pollBackendStatus() {
   String url = String(USE_HTTPS ? "https://" : "http://") +
                BACKEND_HOST + ":" + String(BACKEND_PORT) +
@@ -135,6 +246,8 @@ void pollBackendStatus() {
     https.setTimeout(1800);
 
     if (https.begin(client, url)) {
+      https.addHeader("X-Device-Id", deviceId);
+      https.addHeader("X-Device-Source", "poll");
       int code = https.GET();
       if (code == 200) {
         updatePresenceFromJson(https.getString());
@@ -148,6 +261,8 @@ void pollBackendStatus() {
   HTTPClient http;
   http.setTimeout(1800);
   if (http.begin(client, url)) {
+    http.addHeader("X-Device-Id", deviceId);
+    http.addHeader("X-Device-Source", "poll");
     int code = http.GET();
     if (code == 200) {
       updatePresenceFromJson(http.getString());
@@ -161,6 +276,9 @@ void setup() {
   delay(100);
 
   WiFi.mode(WIFI_STA);
+  pinMode(BUTTON_PIN, BUTTON_ACTIVE_LOW ? INPUT_PULLUP : INPUT_PULLDOWN);
+  rawButtonState = readButtonPressed();
+  buttonPressed = rawButtonState;
   WiFi.setHostname(HOSTNAME);
   WiFi.begin(SSID, PASS);
   Serial.print("Conectando a SSID: ");
@@ -198,15 +316,27 @@ void setup() {
   Serial.println("Servidor web ESP32 iniciado");
   Serial.print("URL local: http://");
   Serial.println(WiFi.localIP());
+
+  deviceId = WiFi.macAddress();
+  deviceId.replace(":", "-");
+  postButtonState("esp32_boot_sync");
 }
 
 void loop() {
   server.handleClient();
+  syncButtonState();
 
   if (millis() - lastPollMs >= 1000) {
     lastPollMs = millis();
     if (WiFi.status() == WL_CONNECTED) {
       pollBackendStatus();
+    }
+  }
+
+  if (millis() - lastDeviceHeartbeatMs >= DEVICE_HEARTBEAT_MS) {
+    lastDeviceHeartbeatMs = millis();
+    if (WiFi.status() == WL_CONNECTED) {
+      postDeviceHeartbeat();
     }
   }
 }
