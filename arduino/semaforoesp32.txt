@@ -1,0 +1,59 @@
+// --- Configuración de Pines ---
+const int R1 = 25; const int Y1 = 19; const int G1 = 26; 
+const int R2 = 4;  const int Y2 = 2;  const int G2 = 15;
+
+const int pinBoton = 14; // USAMOS EL PIN 12
+
+void setup() {
+  Serial.begin(115200);
+  
+  pinMode(R1, OUTPUT); pinMode(Y1, OUTPUT); pinMode(G1, OUTPUT);
+  pinMode(R2, OUTPUT); pinMode(Y2, OUTPUT); pinMode(G2, OUTPUT);
+  
+  // Forzamos el Pull-up interno
+  pinMode(pinBoton, INPUT_PULLUP); 
+  
+  Serial.println("Sistema Iniciado. Esperando Boton en Pin 12...");
+}
+
+void loop() {
+  // --- ESTADO NORMAL ---
+  digitalWrite(G1, HIGH); digitalWrite(R1, LOW);  digitalWrite(Y1, LOW);
+  digitalWrite(R2, HIGH); digitalWrite(G2, LOW);  digitalWrite(Y2, LOW);
+
+  // Leemos el botón (LOW significa presionado en modo PULLUP)
+  if (digitalRead(pinBoton) == LOW) {
+    Serial.println("¡Botón detectado!");
+    delay(50); // Antirrebote
+    ejecutarSecuenciaPeatonal();
+  }
+}
+
+void ejecutarSecuenciaPeatonal() {
+  // S1 pasa a Amarillo
+  digitalWrite(G1, LOW);
+  digitalWrite(Y1, HIGH);
+  delay(2000);
+
+  // S1 pasa a Rojo
+  digitalWrite(Y1, LOW);
+  digitalWrite(R1, HIGH);
+  delay(1000); // Seguridad
+
+  // S2 pasa a VERDE (15 Segundos)
+  digitalWrite(R2, LOW);
+  digitalWrite(G2, HIGH);
+  Serial.println("Peatones cruzando (15s)...");
+  delay(15000);
+
+  // S2 pasa a Amarillo
+  digitalWrite(G2, LOW);
+  digitalWrite(Y2, HIGH);
+  delay(2000);
+
+  // Regreso a normalidad
+  digitalWrite(Y2, LOW);
+  digitalWrite(R2, HIGH);
+  delay(1000);
+  Serial.println("Ciclo terminado. Esperando boton...");
+}

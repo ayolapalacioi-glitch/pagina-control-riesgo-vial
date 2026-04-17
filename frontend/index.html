@@ -63,39 +63,43 @@
           <div id="riskDetails" style="margin-top:8px; color: var(--muted);">Sin eventos críticos recientes.</div>
         </div>
         <div class="card">
-          <h3>Control ESP32 Peatonal</h3>
-          <div id="esp32SignalPill" class="risk-pill risk-medio">⚪ SIN SOLICITUD</div>
+          <h3>Control de Semáforo desde Dashboard</h3>
+          <div id="esp32SignalPill" class="risk-pill risk-medio">⚪ EN ESPERA</div>
           <div id="esp32ConnectionMeta" style="margin-top:8px; color: var(--muted);">ESP32: sin conexión detectada</div>
           <div id="esp32ButtonMeta" style="margin-top:8px; color: var(--muted);">Botón: sin datos</div>
           <div id="esp32DecisionMeta" style="margin-top:6px; color: var(--muted);">Esperando eventos de botón y cámara.</div>
-          <div style="margin-top:10px; display:grid; gap:8px;">
-            <label>Modo de control
-              <select id="esp32ManualOverrideState">
-                <option value="AUTO">AUTO (camara + boton + riesgo)</option>
-                <option value="GREEN">FORZAR VERDE</option>
-                <option value="RED">FORZAR ROJO</option>
-                <option value="GRAY">FORZAR GRIS</option>
-              </select>
-            </label>
-            <label>TTL solicitud botón (ms)
-              <input id="esp32RequestTtlMs" type="number" min="1000" step="100" value="20000" />
-            </label>
-            <label>Debounce botón backend (ms)
-              <input id="esp32ButtonDebounceMs" type="number" min="20" step="10" value="140" />
-            </label>
-            <label>Hold verde (ms)
-              <input id="esp32HoldGreenMs" type="number" min="100" step="50" value="900" />
-            </label>
-            <label>Hold rojo (ms)
-              <input id="esp32HoldRedMs" type="number" min="100" step="50" value="900" />
-            </label>
-            <label>Hold gris (ms)
-              <input id="esp32HoldGrayMs" type="number" min="100" step="50" value="500" />
-            </label>
-            <label>Timeout conexión ESP32 (ms)
-              <input id="esp32HeartbeatTimeoutMs" type="number" min="2000" step="500" value="12000" />
-            </label>
-            <button id="btnSaveEsp32Config">Guardar configuración ESP32</button>
+
+          <section class="esp32-panel" style="margin-top:10px;">
+            <article class="esp32-action-box" style="margin-top:0;">
+              <h4>Control directo ESP32 (por IP)</h4>
+              <div class="esp32-mini-note" id="esp32DirectHint">Si la ESP32 está online, se autocompleta su IP para abrir su web aquí.</div>
+              <div class="esp32-direct-row" style="margin-top:8px;">
+                <input id="esp32DirectHost" type="text" placeholder="Ejemplo: 192.168.2.120" />
+                <button id="btnEsp32OpenDirect" class="esp32-btn esp32-btn-neutral" type="button">Conectar</button>
+                <button id="btnEsp32ReloadEmbedded" class="esp32-btn esp32-btn-ok" type="button">Recargar panel</button>
+              </div>
+              <div class="esp32-mini-note" style="margin-top:8px;">
+                Enlace directo: <a id="esp32DirectLink" href="#" target="_blank" rel="noopener noreferrer">No conectado</a>
+              </div>
+              <iframe id="esp32DirectFrame" class="esp32-direct-frame" title="Panel ESP32 embebido"></iframe>
+            </article>
+
+          </section>
+
+          <div style="display:none;">
+            <select id="esp32ManualOverrideState">
+              <option value="AUTO">AUTO</option>
+              <option value="GREEN">GREEN</option>
+              <option value="RED">RED</option>
+              <option value="GRAY">GRAY</option>
+            </select>
+            <input id="esp32RequestTtlMs" type="number" value="20000" />
+            <input id="esp32ButtonDebounceMs" type="number" value="140" />
+            <input id="esp32HoldGreenMs" type="number" value="900" />
+            <input id="esp32HoldRedMs" type="number" value="900" />
+            <input id="esp32HoldGrayMs" type="number" value="500" />
+            <input id="esp32HeartbeatTimeoutMs" type="number" value="12000" />
+            <button id="btnSaveEsp32Config" type="button">Guardar configuración ESP32</button>
           </div>
         </div>
         <div class="card">

@@ -44,6 +44,25 @@ const esp32HoldRedMs = document.getElementById('esp32HoldRedMs');
 const esp32HoldGrayMs = document.getElementById('esp32HoldGrayMs');
 const esp32HeartbeatTimeoutMs = document.getElementById('esp32HeartbeatTimeoutMs');
 const btnSaveEsp32Config = document.getElementById('btnSaveEsp32Config');
+const esp32WebS1 = document.getElementById('esp32WebS1');
+const esp32WebS2 = document.getElementById('esp32WebS2');
+const esp32WebButton = document.getElementById('esp32WebButton');
+const esp32WebSequence = document.getElementById('esp32WebSequence');
+const btnEsp32ModoNormal = document.getElementById('btnEsp32ModoNormal');
+const btnEsp32Cruce = document.getElementById('btnEsp32Cruce');
+const btnEsp32S1Rojo = document.getElementById('btnEsp32S1Rojo');
+const btnEsp32S1Amarillo = document.getElementById('btnEsp32S1Amarillo');
+const btnEsp32S1Verde = document.getElementById('btnEsp32S1Verde');
+const btnEsp32S2Rojo = document.getElementById('btnEsp32S2Rojo');
+const btnEsp32S2Amarillo = document.getElementById('btnEsp32S2Amarillo');
+const btnEsp32S2Verde = document.getElementById('btnEsp32S2Verde');
+const btnEsp32Actualizar = document.getElementById('btnEsp32Actualizar');
+const esp32DirectHost = document.getElementById('esp32DirectHost');
+const btnEsp32OpenDirect = document.getElementById('btnEsp32OpenDirect');
+const btnEsp32ReloadEmbedded = document.getElementById('btnEsp32ReloadEmbedded');
+const esp32DirectLink = document.getElementById('esp32DirectLink');
+const esp32DirectFrame = document.getElementById('esp32DirectFrame');
+const esp32DirectHint = document.getElementById('esp32DirectHint');
 const eventList = document.getElementById('eventList');
 const modelCounts = document.getElementById('modelCounts');
 const cameraVideo = document.getElementById('cameraVideo');
@@ -70,6 +89,7 @@ const captureCtx = captureCanvas.getContext('2d', { willReadFrequently: true });
 let lastEsp32ButtonPressed = null;
 let lastEsp32SignalState = null;
 let lastEsp32Online = null;
+let lastEsp32DirectHost = '';
 
 function riskView(level) {
   const map = {
@@ -263,6 +283,30 @@ function esp32SignalView(state) {
   return map[state] || map.GRAY;
 }
 
+function mapRuntimeSignalToSemaforos(state) {
+  if (state === 'GREEN') {
+    return { s1: 'GREEN', s2: 'RED' };
+  }
+  if (state === 'RED') {
+    return { s1: 'RED', s2: 'GREEN' };
+  }
+  return { s1: 'YELLOW', s2: 'YELLOW' };
+}
+
+function updateEsp32DashboardPanel(payload) {
+  if (!payload) return;
+
+  const state = payload.state || 'GRAY';
+  const buttonPressed = !!payload.buttonPressed;
+  const requestActive = !!payload.requestActive;
+  const pair = mapRuntimeSignalToSemaforos(state);
+
+  if (esp32WebS1) esp32WebS1.textContent = pair.s1;
+  if (esp32WebS2) esp32WebS2.textContent = pair.s2;
+  if (esp32WebButton) esp32WebButton.textContent = buttonPressed ? 'PRESIONADO' : 'LIBERADO';
+  if (esp32WebSequence) esp32WebSequence.textContent = requestActive ? 'EN CURSO' : 'INACTIVA';
+}
+
 function renderEsp32Signal(payload) {
   if (!payload || !esp32SignalPill) return;
 
@@ -278,6 +322,7 @@ function renderEsp32Signal(payload) {
 
   esp32ButtonMeta.textContent = `Botón: ${buttonPressed ? 'presionado' : 'liberado'} | Solicitud: ${requestActive ? 'activa' : 'inactiva'}`;
   esp32DecisionMeta.textContent = `Decision: ${decision} | Riesgo: ${riskLevel}`;
+  updateEsp32DashboardPanel(payload);
 
   if (lastEsp32ButtonPressed !== buttonPressed) {
     addRealtimeBadge(`ESP32 boton ${buttonPressed ? 'presionado' : 'liberado'}`);
@@ -292,6 +337,173 @@ function renderEsp32Signal(payload) {
   }
 }
 
+async function setEsp32ManualOverride(state) {
+  const response = await fetch(`${API_BASE}/esp32/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ manual_override_state: state })
+  });
+  if (!response.ok) {
+    throw new Error(`No se pudo actualizar estado ESP32 (${response.status})`);
+  }
+
+  const payload = await response.json();
+  if (payload?.signal) renderEsp32Signal(payload.signal);
+  if (payload?.connection) renderEsp32Connection(payload.connection);
+  if (payload?.config) applyEsp32ConfigToForm(payload.config);
+}
+
+async function triggerEsp32PedestrianRequest() {
+  const pressResponse = await fetch(`${API_BASE}/esp32/button`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      pressed: true,
+      source: 'dashboard_web',
+      device_id: 'dashboard-web'
+    })
+  });
+
+  if (!pressResponse.ok) {
+    throw new Error(`No se pudo iniciar cruce peatonal (${pressResponse.status})`);
+  }
+
+  // Simula un pulso real de boton: presiona y suelta para no dejar la solicitud fija.
+  setTimeout(() => {
+    fetch(`${API_BASE}/esp32/button`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pressed: false,
+        source: 'dashboard_web_release',
+        device_id: 'dashboard-web'
+      })
+    }).catch(() => null);
+  }, 180);
+
+  const payload = await pressResponse.json();
+  if (payload?.signal) renderEsp32Signal(payload.signal);
+  if (payload?.connection) renderEsp32Connection(payload.connection);
+}
+
+async function clearEsp32PedestrianRequest() {
+  const response = await fetch(`${API_BASE}/esp32/button`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      pressed: false,
+      source: 'dashboard_web_clear',
+      device_id: 'dashboard-web'
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`No se pudo limpiar solicitud peatonal (${response.status})`);
+  }
+
+  const payload = await response.json();
+  if (payload?.signal) renderEsp32Signal(payload.signal);
+  if (payload?.connection) renderEsp32Connection(payload.connection);
+}
+
+async function applyEsp32ColorFromPanel(target, color) {
+  const override = targetColorToOverride(target, color);
+  await setEsp32ManualOverride(override);
+  addRealtimeBadge(`ESP32 ${target.toUpperCase()} ${color}`);
+}
+
+async function setEsp32NormalModeFromPanel() {
+  await setEsp32ManualOverride('AUTO');
+  await clearEsp32PedestrianRequest();
+}
+
+async function refreshEsp32Runtime() {
+  const response = await fetch(`${API_BASE}/esp32/runtime`);
+  if (!response.ok) {
+    throw new Error(`No se pudo consultar runtime ESP32 (${response.status})`);
+  }
+
+  const payload = await response.json();
+  if (payload?.signal) renderEsp32Signal(payload.signal);
+  if (payload?.connection) renderEsp32Connection(payload.connection);
+  if (payload?.config) applyEsp32ConfigToForm(payload.config);
+}
+
+function targetColorToOverride(target, color) {
+  const targetNorm = String(target || '').toLowerCase();
+  const colorNorm = String(color || '').toUpperCase();
+
+  if (targetNorm === 's1') {
+    if (colorNorm === 'RED') return 'RED';
+    if (colorNorm === 'YELLOW') return 'GRAY';
+    if (colorNorm === 'GREEN') return 'GREEN';
+  }
+
+  if (targetNorm === 's2') {
+    if (colorNorm === 'RED') return 'GREEN';
+    if (colorNorm === 'YELLOW') return 'GRAY';
+    if (colorNorm === 'GREEN') return 'RED';
+  }
+
+  return 'AUTO';
+}
+
+function normalizeHost(rawHost) {
+  const text = String(rawHost || '').trim();
+  if (!text) return '';
+  return text
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/.*$/, '')
+    .trim();
+}
+
+function buildEsp32DirectUrl(host) {
+  const safeHost = normalizeHost(host);
+  if (!safeHost) return '';
+  return `http://${safeHost}/`;
+}
+
+function applyEmbeddedEsp32Url(host, forceReload = false) {
+  const url = buildEsp32DirectUrl(host);
+
+  if (!url) {
+    if (esp32DirectLink) {
+      esp32DirectLink.href = '#';
+      esp32DirectLink.textContent = 'No conectado';
+    }
+    if (esp32DirectFrame) {
+      esp32DirectFrame.removeAttribute('src');
+    }
+    return;
+  }
+
+  if (esp32DirectLink) {
+    esp32DirectLink.href = url;
+    esp32DirectLink.textContent = url;
+  }
+
+  if (esp32DirectFrame) {
+    const current = esp32DirectFrame.getAttribute('src') || '';
+    if (forceReload || current !== url) {
+      esp32DirectFrame.src = url;
+    }
+  }
+}
+
+function connectDirectEsp32FromInput(forceReload = false) {
+  const host = normalizeHost(esp32DirectHost?.value || '');
+  if (!host) {
+    addRealtimeBadge('Ingresa IP/host de ESP32');
+    return;
+  }
+  lastEsp32DirectHost = host;
+  if (esp32DirectHost) esp32DirectHost.value = host;
+  applyEmbeddedEsp32Url(host, forceReload);
+  if (esp32DirectHint) {
+    esp32DirectHint.textContent = `Conectado a ESP32 en ${host}. Puedes controlar la placa dentro del panel embebido.`;
+  }
+}
+
 function renderEsp32Connection(connection) {
   if (!connection || !esp32ConnectionMeta) return;
   const online = !!connection.online;
@@ -299,6 +511,20 @@ function renderEsp32Connection(connection) {
   const sourceIp = connection.sourceIp || 'N/A';
   const deviceId = connection.deviceId || 'esp32';
   esp32ConnectionMeta.textContent = `ESP32: ${online ? 'ONLINE' : 'OFFLINE'} | id: ${deviceId} | ip: ${sourceIp} | lastSeen: ${lastSeen}`;
+
+  if (online) {
+    const host = normalizeHost(sourceIp);
+    if (host && esp32DirectHost && !normalizeHost(esp32DirectHost.value)) {
+      esp32DirectHost.value = host;
+    }
+    if (host && host !== lastEsp32DirectHost) {
+      lastEsp32DirectHost = host;
+      applyEmbeddedEsp32Url(host, false);
+      if (esp32DirectHint) {
+        esp32DirectHint.textContent = `ESP32 detectada en ${host}. Panel embebido listo.`;
+      }
+    }
+  }
 
   if (lastEsp32Online !== online) {
     addRealtimeBadge(`ESP32 ${online ? 'online' : 'offline'}`);
@@ -682,6 +908,59 @@ function wireUi() {
     });
   });
 
+  btnEsp32ModoNormal?.addEventListener('click', () => {
+    setEsp32NormalModeFromPanel().then(() => {
+      addRealtimeBadge('ESP32 modo normal (AUTO)');
+    }).catch((error) => {
+      addRealtimeBadge('Error aplicando modo normal ESP32');
+      pushEventLine(`${new Date().toLocaleTimeString()} | ${String(error?.message || 'error modo normal ESP32')}`);
+    });
+  });
+
+  btnEsp32Cruce?.addEventListener('click', () => {
+    triggerEsp32PedestrianRequest().then(() => {
+      addRealtimeBadge('Cruce peatonal solicitado');
+    }).catch((error) => {
+      addRealtimeBadge('Error al solicitar cruce peatonal');
+      pushEventLine(`${new Date().toLocaleTimeString()} | ${String(error?.message || 'error cruce peatonal')}`);
+    });
+  });
+
+  btnEsp32S1Rojo?.addEventListener('click', () => applyEsp32ColorFromPanel('s1', 'RED').catch((error) => {
+    pushEventLine(`${new Date().toLocaleTimeString()} | ${String(error?.message || 'error color S1 rojo')}`);
+  }));
+  btnEsp32S1Amarillo?.addEventListener('click', () => applyEsp32ColorFromPanel('s1', 'YELLOW').catch((error) => {
+    pushEventLine(`${new Date().toLocaleTimeString()} | ${String(error?.message || 'error color S1 amarillo')}`);
+  }));
+  btnEsp32S1Verde?.addEventListener('click', () => applyEsp32ColorFromPanel('s1', 'GREEN').catch((error) => {
+    pushEventLine(`${new Date().toLocaleTimeString()} | ${String(error?.message || 'error color S1 verde')}`);
+  }));
+  btnEsp32S2Rojo?.addEventListener('click', () => applyEsp32ColorFromPanel('s2', 'RED').catch((error) => {
+    pushEventLine(`${new Date().toLocaleTimeString()} | ${String(error?.message || 'error color S2 rojo')}`);
+  }));
+  btnEsp32S2Amarillo?.addEventListener('click', () => applyEsp32ColorFromPanel('s2', 'YELLOW').catch((error) => {
+    pushEventLine(`${new Date().toLocaleTimeString()} | ${String(error?.message || 'error color S2 amarillo')}`);
+  }));
+  btnEsp32S2Verde?.addEventListener('click', () => applyEsp32ColorFromPanel('s2', 'GREEN').catch((error) => {
+    pushEventLine(`${new Date().toLocaleTimeString()} | ${String(error?.message || 'error color S2 verde')}`);
+  }));
+
+  btnEsp32Actualizar?.addEventListener('click', () => {
+    refreshEsp32Runtime().catch(() => null);
+  });
+
+  btnEsp32OpenDirect?.addEventListener('click', () => {
+    connectDirectEsp32FromInput(false);
+  });
+
+  btnEsp32ReloadEmbedded?.addEventListener('click', () => {
+    if (lastEsp32DirectHost) {
+      applyEmbeddedEsp32Url(lastEsp32DirectHost, true);
+      return;
+    }
+    connectDirectEsp32FromInput(true);
+  });
+
   const fireQr = () => {
     addRealtimeBadge('QR simulado');
     startFenceRealtimeSync('qr_button');
@@ -775,6 +1054,10 @@ fetch(`${API_BASE}/esp32/runtime`).then((res) => res.json()).then((payload) => {
   if (payload?.connection) renderEsp32Connection(payload.connection);
   if (payload?.config) applyEsp32ConfigToForm(payload.config);
 }).catch(() => null);
+
+setInterval(() => {
+  refreshEsp32Runtime().catch(() => null);
+}, 1000);
 
 cameraStatus.textContent = 'Listo. Presiona "Abrir camara PC (IA)" para iniciar deteccion en backend.';
 liveEngine.textContent = 'YOLO Backend';
