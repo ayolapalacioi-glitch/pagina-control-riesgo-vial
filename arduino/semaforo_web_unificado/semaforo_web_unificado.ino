@@ -8,12 +8,17 @@ const char* PASS = "12345678";
 const char* HOSTNAME = "esp32-vial";
 
 // --- PINES DEL SEMAFORO ---
-const int R1 = 25;
-const int Y1 = 19;
-const int G1 = 26;
-const int R2 = 4;
-const int Y2 = 2;
-const int G2 = 15;
+const int R1 = 25; // Vehicular 1 Rojo
+const int Y1 = 19; // Vehicular 1 Amarillo
+const int G1 = 26; // Vehicular 1 Verde
+
+const int R2 = 4;  // Peatonal Rojo
+const int Y2 = 2;  // Peatonal Amarillo
+const int G2 = 15; // Peatonal Verde
+
+const int R3 = 27; // Vehicular 2 Rojo
+const int Y3 = 12; // Vehicular 2 Amarillo
+const int G3 = 13; // Vehicular 2 Verde
 
 // --- BOTON PEATONAL FISICO ---
 const int BUTTON_PIN = 14;
@@ -43,8 +48,9 @@ enum class PedestrianPhase : uint8_t {
   S2_YELLOW
 };
 
-LightColor currentS1 = LightColor::OFF;
-LightColor currentS2 = LightColor::OFF;
+LightColor currentS1 = LightColor::OFF; // Vehicular 1
+LightColor currentS2 = LightColor::OFF; // Peatonal
+LightColor currentS3 = LightColor::OFF; // Vehicular 2
 
 PedestrianPhase pedestrianPhase = PedestrianPhase::IDLE;
 unsigned long phaseStartMs = 0;
@@ -92,9 +98,15 @@ void setS2(LightColor color) {
   writeTrafficLightPins(R2, Y2, G2, color);
 }
 
+void setS3(LightColor color) {
+  currentS3 = color;
+  writeTrafficLightPins(R3, Y3, G3, color);
+}
+
 void setNormalMode() {
   setS1(LightColor::GREEN);
   setS2(LightColor::RED);
+  setS3(LightColor::GREEN);
 }
 
 bool isSequenceRunning() {
@@ -112,6 +124,7 @@ bool startPedestrianSequence(const char* source) {
 
   setS1(LightColor::YELLOW);
   setS2(LightColor::RED);
+  setS3(LightColor::YELLOW);
 
   Serial.print("Iniciando secuencia peatonal desde: ");
   Serial.println(sequenceSource);
@@ -129,6 +142,7 @@ void updatePedestrianSequence() {
     case PedestrianPhase::S1_YELLOW:
       if (elapsed >= T_S1_YELLOW_MS) {
         setS1(LightColor::RED);
+        setS3(LightColor::RED);
         pedestrianPhase = PedestrianPhase::S1_RED_WAIT;
         phaseStartMs = millis();
       }
@@ -185,6 +199,7 @@ void sendStateJson(int statusCode = 200) {
   String json = String("{") +
                 "\"s1\":\"" + colorToText(currentS1) + "\"," +
                 "\"s2\":\"" + colorToText(currentS2) + "\"," +
+                "\"s3\":\"" + colorToText(currentS3) + "\"," +
                 "\"buttonPressed\":" + boolToJson(stableButtonState) + "," +
                 "\"sequenceRunning\":" + boolToJson(isSequenceRunning()) + "," +
                 "\"sequenceSource\":\"" + sequenceSource + "\"" +
@@ -339,12 +354,16 @@ void handleRoot() {
 
     <section class="status">
       <article class="status-card">
-        <div class="label">Semaforo 1</div>
+        <div class="label">Vehicular 1 (S1)</div>
         <div class="value" id="s1">-</div>
       </article>
       <article class="status-card">
-        <div class="label">Semaforo 2</div>
+        <div class="label">Peatonal (S2)</div>
         <div class="value" id="s2">-</div>
+      </article>
+      <article class="status-card">
+        <div class="label">Vehicular 2 (S3)</div>
+        <div class="value" id="s3">-</div>
       </article>
       <article class="status-card">
         <div class="label">Boton fisico</div>
@@ -366,7 +385,7 @@ void handleRoot() {
       </article>
 
       <article class="block">
-        <h2>Semaforo 1</h2>
+        <h2>Vehicular 1 (S1)</h2>
         <div class="btn-row">
           <button class="primary" onclick="setColor('s1','RED')">Rojo</button>
           <button class="warn" onclick="setColor('s1','YELLOW')">Amarillo</button>
@@ -375,11 +394,20 @@ void handleRoot() {
       </article>
 
       <article class="block">
-        <h2>Semaforo 2</h2>
+        <h2>Peatonal (S2)</h2>
         <div class="btn-row">
           <button class="primary" onclick="setColor('s2','RED')">Rojo</button>
           <button class="warn" onclick="setColor('s2','YELLOW')">Amarillo</button>
           <button class="ok" onclick="setColor('s2','GREEN')">Verde</button>
+        </div>
+      </article>
+
+      <article class="block">
+        <h2>Vehicular 2 (S3)</h2>
+        <div class="btn-row">
+          <button class="primary" onclick="setColor('s3','RED')">Rojo</button>
+          <button class="warn" onclick="setColor('s3','YELLOW')">Amarillo</button>
+          <button class="ok" onclick="setColor('s3','GREEN')">Verde</button>
         </div>
       </article>
 
@@ -420,6 +448,7 @@ void handleRoot() {
 
         document.getElementById('s1').textContent = s.s1;
         document.getElementById('s2').textContent = s.s2;
+        document.getElementById('s3').textContent = s.s3;
         document.getElementById('button').textContent = s.buttonPressed ? 'PRESIONADO' : 'LIBERADO';
         document.getElementById('sequence').textContent = s.sequenceRunning ? ('EN CURSO (' + s.sequenceSource + ')') : 'INACTIVA';
       } catch (e) {
@@ -476,8 +505,10 @@ void handleSetColor() {
     setS1(color);
   } else if (target == "s2") {
     setS2(color);
+  } else if (target == "s3") {
+    setS3(color);
   } else {
-    server.send(400, "application/json", "{\"error\":\"Target invalido. Use s1 o s2\"}");
+    server.send(400, "application/json", "{\"error\":\"Target invalido. Use s1, s2 o s3\"}");
     return;
   }
 
@@ -552,6 +583,9 @@ void setupPins() {
   pinMode(R2, OUTPUT);
   pinMode(Y2, OUTPUT);
   pinMode(G2, OUTPUT);
+  pinMode(R3, OUTPUT);
+  pinMode(Y3, OUTPUT);
+  pinMode(G3, OUTPUT);
 
   pinMode(BUTTON_PIN, BUTTON_ACTIVE_LOW ? INPUT_PULLUP : INPUT_PULLDOWN);
 

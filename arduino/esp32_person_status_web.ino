@@ -20,6 +20,28 @@ const unsigned long BUTTON_DEBOUNCE_MS = 45;
 const unsigned long BUTTON_HEARTBEAT_MS = 7000;
 const unsigned long DEVICE_HEARTBEAT_MS = 5000;
 
+// --- PINES SEMAFOROS ---
+// Peatonal
+const int PIN_PED_GREEN = 21;
+const int PIN_PED_RED = 19;
+// Vehicular 1 (Ida)
+const int PIN_VEH1_GREEN = 25;
+const int PIN_VEH1_YELLOW = 26;
+const int PIN_VEH1_RED = 27;
+// Vehicular 2 (Venida)
+const int PIN_VEH2_GREEN = 14;
+const int PIN_VEH2_YELLOW = 12;
+const int PIN_VEH2_RED = 13;
+
+enum TrafficState {
+  STATE_VEHICLES_GREEN,
+  STATE_YELLOW_TRANSITION,
+  STATE_PEDESTRIAN_GREEN
+};
+TrafficState currentTrafficState = STATE_VEHICLES_GREEN;
+unsigned long yellowStartTime = 0;
+const unsigned long YELLOW_DURATION_MS = 2000;
+
 // true: consulta https://... (certificado autofirmado permitido)
 // false: consulta http://...
 const bool USE_HTTPS = true;
@@ -271,12 +293,81 @@ void pollBackendStatus() {
   }
 }
 
+void setTrafficLights(TrafficState state) {
+  switch(state) {
+    case STATE_VEHICLES_GREEN:
+      digitalWrite(PIN_PED_RED, HIGH);
+      digitalWrite(PIN_PED_GREEN, LOW);
+      digitalWrite(PIN_VEH1_RED, LOW);
+      digitalWrite(PIN_VEH1_YELLOW, LOW);
+      digitalWrite(PIN_VEH1_GREEN, HIGH);
+      digitalWrite(PIN_VEH2_RED, LOW);
+      digitalWrite(PIN_VEH2_YELLOW, LOW);
+      digitalWrite(PIN_VEH2_GREEN, HIGH);
+      break;
+    case STATE_YELLOW_TRANSITION:
+      digitalWrite(PIN_PED_RED, HIGH);
+      digitalWrite(PIN_PED_GREEN, LOW);
+      digitalWrite(PIN_VEH1_RED, LOW);
+      digitalWrite(PIN_VEH1_YELLOW, HIGH);
+      digitalWrite(PIN_VEH1_GREEN, LOW);
+      digitalWrite(PIN_VEH2_RED, LOW);
+      digitalWrite(PIN_VEH2_YELLOW, HIGH);
+      digitalWrite(PIN_VEH2_GREEN, LOW);
+      break;
+    case STATE_PEDESTRIAN_GREEN:
+      digitalWrite(PIN_PED_RED, LOW);
+      digitalWrite(PIN_PED_GREEN, HIGH);
+      digitalWrite(PIN_VEH1_RED, HIGH);
+      digitalWrite(PIN_VEH1_YELLOW, LOW);
+      digitalWrite(PIN_VEH1_GREEN, LOW);
+      digitalWrite(PIN_VEH2_RED, HIGH);
+      digitalWrite(PIN_VEH2_YELLOW, LOW);
+      digitalWrite(PIN_VEH2_GREEN, LOW);
+      break;
+  }
+}
+
+void updateTrafficLights() {
+  bool targetPedestrianGreen = personDetected;
+
+  if (targetPedestrianGreen) {
+    if (currentTrafficState == STATE_VEHICLES_GREEN) {
+      currentTrafficState = STATE_YELLOW_TRANSITION;
+      yellowStartTime = millis();
+      setTrafficLights(currentTrafficState);
+    } else if (currentTrafficState == STATE_YELLOW_TRANSITION) {
+      if (millis() - yellowStartTime >= YELLOW_DURATION_MS) {
+        currentTrafficState = STATE_PEDESTRIAN_GREEN;
+        setTrafficLights(currentTrafficState);
+      }
+    }
+  } else {
+    if (currentTrafficState != STATE_VEHICLES_GREEN) {
+      currentTrafficState = STATE_VEHICLES_GREEN;
+      setTrafficLights(currentTrafficState);
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   delay(100);
 
   WiFi.mode(WIFI_STA);
   pinMode(BUTTON_PIN, BUTTON_ACTIVE_LOW ? INPUT_PULLUP : INPUT_PULLDOWN);
+
+  // Inicializar pines de semáforos
+  pinMode(PIN_PED_GREEN, OUTPUT);
+  pinMode(PIN_PED_RED, OUTPUT);
+  pinMode(PIN_VEH1_GREEN, OUTPUT);
+  pinMode(PIN_VEH1_YELLOW, OUTPUT);
+  pinMode(PIN_VEH1_RED, OUTPUT);
+  pinMode(PIN_VEH2_GREEN, OUTPUT);
+  pinMode(PIN_VEH2_YELLOW, OUTPUT);
+  pinMode(PIN_VEH2_RED, OUTPUT);
+  setTrafficLights(STATE_VEHICLES_GREEN);
+
   rawButtonState = readButtonPressed();
   buttonPressed = rawButtonState;
   WiFi.setHostname(HOSTNAME);
@@ -325,6 +416,8 @@ void setup() {
 void loop() {
   server.handleClient();
   syncButtonState();
+
+  updateTrafficLights();
 
   if (millis() - lastPollMs >= 1000) {
     lastPollMs = millis();
