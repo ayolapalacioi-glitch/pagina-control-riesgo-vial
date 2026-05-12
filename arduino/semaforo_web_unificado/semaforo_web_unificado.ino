@@ -9,14 +9,14 @@ const char* HOSTNAME = "esp32-vial";
 
 // --- PINES DEL SEMAFORO ---
 const int R1 = 25; // Vehicular 1 Rojo
-const int Y1 = 19; // Vehicular 1 Amarillo
-const int G1 = 26; // Vehicular 1 Verde
+const int Y1 = 5; // Vehicular 1 Amarillo
+const int G1 = 17; // Vehicular 1 Verde
 
-const int R2 = 4;  // Peatonal Rojo
+const int R2 = 19;  // Peatonal Rojo
 const int Y2 = 2;  // Peatonal Amarillo
 const int G2 = 15; // Peatonal Verde
 
-const int R3 = 27; // Vehicular 2 Rojo
+const int R3 = 26; // Vehicular 2 Rojo
 const int Y3 = 12; // Vehicular 2 Amarillo
 const int G3 = 13; // Vehicular 2 Verde
 
