@@ -101,29 +101,26 @@ void handleRoot() {
 void updatePresenceFromJson(const String& body) {
   // Espera JSON como: {"state":"GREEN|RED|GRAY","personDetected":true,"vehicleOnlyDetected":false,...}
   // 1) Ruta principal: estado discreto (mas estable ante cambios de orden del JSON)
-  int stateKeyPos = body.indexOf("\"state\"");
-  if (stateKeyPos >= 0) {
-    int greenPos = body.indexOf("\"GREEN\"", stateKeyPos);
-    int redPos = body.indexOf("\"RED\"", stateKeyPos);
-    int grayPos = body.indexOf("\"GRAY\"", stateKeyPos);
+  int stateGreen = body.indexOf("\"state\":\"GREEN\"");
+  int stateRed = body.indexOf("\"state\":\"RED\"");
+  int stateGray = body.indexOf("\"state\":\"GRAY\"");
 
-    if (greenPos >= 0) {
-      personDetected = true;
-      vehicleOnlyDetected = false;
-      return;
-    }
+  if (stateGreen >= 0) {
+    personDetected = true;
+    vehicleOnlyDetected = false;
+    return;
+  }
 
-    if (redPos >= 0) {
-      personDetected = false;
-      vehicleOnlyDetected = true;
-      return;
-    }
+  if (stateRed >= 0) {
+    personDetected = false;
+    vehicleOnlyDetected = true;
+    return;
+  }
 
-    if (grayPos >= 0) {
-      personDetected = false;
-      vehicleOnlyDetected = false;
-      return;
-    }
+  if (stateGray >= 0) {
+    personDetected = false;
+    vehicleOnlyDetected = false;
+    return;
   }
 
   // 2) Respaldo: lectura por banderas booleanas

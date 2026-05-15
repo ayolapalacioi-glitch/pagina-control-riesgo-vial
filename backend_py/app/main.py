@@ -221,21 +221,12 @@ def compute_esp32_signal(base_presence: dict[str, Any], risk_level: str | None) 
     if override != "AUTO":
         next_state = override
         reason = "CONTROL_MANUAL_WEB"
-    elif not request_active:
-        next_state = "GRAY"
-        reason = "SIN_SOLICITUD_BOTON"
-    elif danger_detected:
-        next_state = "RED"
-        reason = "PELIGRO_EN_CRUCE"
-    elif camera_person:
+    elif camera_person or request_active:
         next_state = "GREEN"
-        reason = "PASO_PEATON_HABILITADO"
-    elif not camera_person and not camera_vehicle:
-        next_state = "GRAY"
-        reason = "SIN_ACTORES_EN_CRUCE"
+        reason = "PEATON_DETECTADO_O_BOTON"
     else:
         next_state = "RED"
-        reason = "VEHICULO_EN_CRUCE"
+        reason = "SOLO_AUTOS_O_NADA"
 
     current_state = esp32_signal_state.get("state", "GRAY")
     min_hold_map = {
