@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import cv2
+import numpy as np
 import json
 import os
 import socket
@@ -7,11 +9,12 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from pydantic import BaseModel
 
 import socketio
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.routing import APIRouter
 from fastapi.staticfiles import StaticFiles
 
@@ -22,6 +25,7 @@ from .models import (
     Esp32ConfigUpdateRequest,
     Esp32HeartbeatRequest,
     FramePayload,
+    RtspCameraConfigRequest,
     VisionInferRequest,
     VisionInferResponse,
 )
@@ -29,6 +33,7 @@ from .mqtt_client import MqttBridge
 from .presence_signal import get_presence_signal_state, update_presence_signal
 from .report_service import export_daily_pdf, export_events_to_csv
 from .risk import calculate_risk
+from .rtsp_camera import rtsp_camera_manager
 from .stats_service import aggregate_stats
 from .tracker import update_tracks
 from .traffic_counter import get_traffic_report, register_tracks_for_report
@@ -54,7 +59,13 @@ MAP_BOUNDS = {
     "west": -75.5498,
 }
 
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+sio = socketio.AsyncServer(
+    async_mode="asgi",
+    cors_allowed_origins="*",
+    ping_timeout=60,
+    ping_interval=25,
+    max_http_buffer_size=50000000,
+)
 app = FastAPI(title="Seguridad Vial Backend Python", version="2.0.0")
 
 app.add_middleware(
@@ -68,6 +79,9 @@ app.add_middleware(
 latest_fence_update: dict[str, Any] | None = None
 connected_devices: dict[str, dict[str, Any]] = {}
 latest_risk_level: str | None = None
+# Historial para suavizar la deteccion de la cartelera en modo prueba
+latest_billboard_polygon: list[dict[str, float]] | None = None
+BILLBOARD_MODE = str(os.getenv("BILLBOARD_MODE", "true")).lower() == "true"
 
 esp32_button_state: dict[str, Any] = {
     "pressed": False,
@@ -393,7 +407,8 @@ def build_objects_envelope(
     tracks: list[dict],
     metrics: dict[str, Any],
     frame_size: dict[str, int],
-    events: list[dict],
+    events: list[dict[str, Any]],
+    crosswalk: list[dict[str, float]] | None = None,
 ) -> dict[str, Any]:
     objects = []
     for t in tracks:
@@ -423,6 +438,7 @@ def build_objects_envelope(
         },
         "objects": objects,
         "events": events,
+        "crosswalk": crosswalk,
     }
 
 
@@ -492,18 +508,34 @@ async def vision_infer(request: VisionInferRequest) -> VisionInferResponse:
     width = int(frame_size.get("width", 1280))
     height = int(frame_size.get("height", 720))
 
-    crosswalk = (
-        [p.model_dump() for p in request.crosswalk_polygon]
-        if request.crosswalk_polygon
-        else default_crosswalk_polygon(width, height)
-    )
-
     try:
         image_bgr = vision_service.decode_data_url(request.image_base64)
     except Exception as ex:
         raise HTTPException(status_code=400, detail=str(ex)) from ex
 
-    detections = vision_service.infer(image_bgr)
+    detections, image_annotated_base64 = vision_service.infer(image_bgr)
+
+    # Logica de prueba: Detectar la cartelera (cruce peatonal) dinamicamente
+    dynamic_crosswalk = None
+    if BILLBOARD_MODE:
+        detected_poly = vision_service.detect_billboard_polygon(image_bgr)
+        if detected_poly:
+            global latest_billboard_polygon
+            latest_billboard_polygon = detected_poly
+            dynamic_crosswalk = detected_poly
+        elif latest_billboard_polygon:
+            # Reutilizar la ultima conocida si no se detecto en este frame para evitar saltos
+            dynamic_crosswalk = latest_billboard_polygon
+
+    crosswalk = (
+        dynamic_crosswalk
+        if dynamic_crosswalk
+        else (
+            [p.model_dump() for p in request.crosswalk_polygon]
+            if request.crosswalk_polygon
+            else default_crosswalk_polygon(width, height)
+        )
+    )
 
     frame_payload = FramePayload(
         camera_id=request.camera_id,
@@ -527,11 +559,12 @@ async def vision_infer(request: VisionInferRequest) -> VisionInferResponse:
             "center": t.get("center"),
             "predicted": (t.get("predictedPath") or [{}])[0] if t.get("predictedPath") else None,
             "trail": t.get("trail", []),
+            "inCrosswalk": t.get("inCrosswalk", False),
         }
         for t in tracks
     ]
 
-    envelope = build_objects_envelope(request.camera_id, timestamp, tracks, metrics, frame_size, events)
+    envelope = build_objects_envelope(request.camera_id, timestamp, tracks, metrics, frame_size, events, crosswalk)
 
     await sio.emit(
         "state_update",
@@ -555,6 +588,8 @@ async def vision_infer(request: VisionInferRequest) -> VisionInferResponse:
         metrics=metrics,
         envelope=envelope,
         events=events,
+        crosswalk=crosswalk,
+        image_annotated_base64=image_annotated_base64,
     )
 
 
@@ -743,6 +778,106 @@ async def esp32_light() -> HTMLResponse:
     return HTMLResponse(html)
 
 
+_last_status_cache = {}
+_last_status_time = 0.0
+
+
+@api.get("/camera/rtsp/status")
+async def get_rtsp_camera_status() -> dict:
+    global _last_status_cache, _last_status_time
+    now = time.time()
+    if now - _last_status_time > 1.0 or not _last_status_cache:
+        _last_status_cache = rtsp_camera_manager.get_status()
+        _last_status_time = now
+    return _last_status_cache
+
+
+_placeholder_cache = None
+
+
+def _get_reconnecting_mjpeg_bytes() -> bytes:
+    global _placeholder_cache
+    if _placeholder_cache is None:
+        try:
+            img = np.zeros((360, 640, 3), dtype=np.uint8)
+            img[:] = (20, 24, 30)
+            cv2.circle(img, (50, 180), 12, (0, 255, 0), -1)
+            cv2.putText(img, "VTA-84920 ORBIT (Tuya Smart Life)", (80, 186), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(img, "Estableciendo enlace HD en vivo...", (80, 220), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 180), 1, cv2.LINE_AA)
+            _, buf = cv2.imencode('.jpg', img)
+            _placeholder_cache = buf.tobytes()
+        except Exception:
+            return b""
+    return _placeholder_cache or b""
+
+
+@api.get("/camera/stream.mjpg")
+async def mjpeg_stream():
+    """Flujo de video MJPEG nativo directo estilo Tuya Smart Life con autoreconexión continua."""
+    async def frame_generator():
+        try:
+            while True:
+                frame_bytes = rtsp_camera_manager.get_latest_mjpeg_bytes() or _get_reconnecting_mjpeg_bytes()
+                if frame_bytes:
+                    yield (
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
+                    )
+                await asyncio.sleep(0.033)
+        except (asyncio.CancelledError, Exception):
+            pass
+
+    return StreamingResponse(
+        frame_generator(),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
+
+@api.post("/camera/rtsp/config")
+async def update_rtsp_camera_config(req: RtspCameraConfigRequest) -> dict:
+    rtsp_camera_manager.update_config(
+        ip=req.ip,
+        user=req.user,
+        password=req.password,
+        path=req.path,
+        url=req.url,
+        tuya_client_id=req.tuya_client_id,
+        tuya_client_secret=req.tuya_client_secret,
+        tuya_device_id=req.tuya_device_id,
+        enabled=req.enabled,
+    )
+    return {"ok": True, "status": rtsp_camera_manager.get_status()}
+
+
+class MotionTrackingRequest(BaseModel):
+    enabled: bool
+
+
+@api.post("/camera/motion-tracking")
+async def toggle_motion_tracking(req: MotionTrackingRequest) -> dict:
+    if not rtsp_camera_manager.tuya_client_id or not rtsp_camera_manager.tuya_device_id:
+        raise HTTPException(status_code=400, detail="Credenciales de Tuya Cloud no configuradas.")
+    try:
+        import tinytuya
+        cloud = tinytuya.Cloud(
+            apiRegion=rtsp_camera_manager.tuya_region,
+            apiKey=rtsp_camera_manager.tuya_client_id,
+            apiSecret=rtsp_camera_manager.tuya_client_secret,
+        )
+        commands = [{"code": "motion_tracking", "value": req.enabled}]
+        res = cloud.cloudrequest(
+            f"/v1.0/devices/{rtsp_camera_manager.tuya_device_id}/commands",
+            action="POST",
+            post={"commands": commands},
+        )
+        return {"success": True, "enabled": req.enabled, "tuyaResponse": res}
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
+
+
+app.include_router(api)
+
+
 @app.get("/viewer.html")
 async def viewer_html() -> FileResponse:
     return FileResponse(FRONTEND_DIR / "viewer.html")
@@ -892,13 +1027,80 @@ def _mqtt_handler(raw_payload: dict, source: str) -> None:
         return
 
 
+_rtsp_frame_counter = 0
+
+async def process_rtsp_frame_payload(payload: FramePayload, source: str, image_annotated_base64: str | None = None) -> None:
+    global _rtsp_frame_counter
+    _rtsp_frame_counter += 1
+
+    snapshot, tracks, event = await process_frame_payload(payload, source, emit_snapshot=True)
+    metrics = build_metrics(event)
+
+    # Emitir video de inmediato
+    if image_annotated_base64:
+        await sio.emit(
+            "rtsp_frame_update",
+            {
+                "cameraId": payload.camera_id,
+                "timestamp": payload.timestamp,
+                "image_annotated_base64": image_annotated_base64,
+                "metrics": metrics,
+            },
+        )
+
+    # Throttling de metadatos pesados (1 de cada 8 cuadros o en caso de riesgo) a fin de evitar congestionar la red
+    if _rtsp_frame_counter % 8 == 0 or metrics["risk"] != "LOW":
+        events = build_events_from_tracks(tracks)
+        frame_size = payload.frame_size.model_dump() if payload.frame_size else {"width": 1280, "height": 720}
+        crosswalk = [p.model_dump() for p in payload.crosswalk_polygon] if payload.crosswalk_polygon else None
+
+        tracks_ui = [
+            {
+                "id": t["trackId"],
+                "classType": t["className"],
+                "score": t.get("score", 0),
+                "bbox": t.get("bbox"),
+                "center": t.get("center"),
+                "predicted": (t.get("predictedPath") or [{}])[0] if t.get("predictedPath") else None,
+                "trail": t.get("trail", []),
+                "inCrosswalk": t.get("inCrosswalk", False),
+            }
+            for t in tracks
+        ]
+        envelope = build_objects_envelope(payload.camera_id, payload.timestamp, tracks, metrics, frame_size, events, crosswalk)
+
+        await sio.emit(
+            "state_update",
+            {
+                "source": source,
+                "timestamp": payload.timestamp,
+                "cameraId": payload.camera_id,
+                "risk": metrics["risk"],
+                "ttc": metrics["ttc"],
+                "pet": metrics["pet"],
+                "vRel": metrics["vRel"],
+                "objectCount": len(tracks_ui),
+            },
+        )
+        await sio.emit("objects_update", envelope)
+
+
 mqtt_bridge = MqttBridge(MQTT_BROKER_URL, MQTT_TOPIC, USE_MQTT, _mqtt_handler)
 
 
 @app.on_event("startup")
 async def startup_event():
+    import asyncio
     mqtt_bridge.start()
+    loop = asyncio.get_event_loop()
+    rtsp_camera_manager.start(event_loop=loop, process_frame_callback=process_rtsp_frame_payload)
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    rtsp_camera_manager.stop()
 
 
 def get_asgi_app():
     return socketio.ASGIApp(sio, other_asgi_app=app, socketio_path="socket.io")
+

@@ -90,6 +90,8 @@ class VisionInferResponse(BaseModel):
     metrics: dict[str, Any]
     envelope: dict[str, Any]
     events: list[dict[str, Any]]
+    crosswalk: Optional[list[Point]] = None
+    image_annotated_base64: Optional[str] = None
 
 
 class Esp32ButtonUpdateRequest(BaseModel):
@@ -114,3 +116,16 @@ class Esp32ConfigUpdateRequest(BaseModel):
     force_emit_ms: Optional[int] = None
     heartbeat_timeout_ms: Optional[int] = None
     manual_override_state: Optional[Literal["AUTO", "GREEN", "RED", "GRAY"]] = None
+
+
+class RtspCameraConfigRequest(BaseModel):
+    ip: Optional[str] = None
+    user: Optional[str] = None
+    password: Optional[str] = None
+    path: Optional[str] = None
+    url: Optional[str] = None
+    tuya_client_id: Optional[str] = None
+    tuya_client_secret: Optional[str] = None
+    tuya_device_id: Optional[str] = None
+    enabled: Optional[bool] = None
+

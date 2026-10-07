@@ -1,0 +1,17 @@
+# Configuración go2rtc usando ffmpeg exec para cámara VTA IP 192.168.1.76 con clave 12345
+log:
+  level: debug
+
+streams:
+  vta_camera:
+    - exec:ffmpeg -rtsp_transport tcp -i "rtsp://admin:12345@192.168.1.76:554/live/ch0" -c copy -f rtsp {output}
+    - exec:ffmpeg -rtsp_transport tcp -i "rtsp://admin:12345@192.168.1.76:554/stream1" -c copy -f rtsp {output}
+    - exec:ffmpeg -rtsp_transport tcp -i "rtsp://admin:12345@192.168.1.76:554/onvif1" -c copy -f rtsp {output}
+    - exec:ffmpeg -rtsp_transport tcp -i "rtsp://admin:12345@192.168.1.76:554/" -c copy -f rtsp {output}
+    - exec:ffmpeg -rtsp_transport tcp -i "rtsp://admin:12345@192.168.1.76:6668/live/ch0" -c copy -f rtsp {output}
+
+api:
+  listen: ":1984"
+
+rtsp:
+  listen: ":8554"

@@ -10,6 +10,24 @@ Push-Location $root
 Write-Host ""
 Write-Host "  Iniciando servidor de Seguridad Vial..." -ForegroundColor Cyan
 
+Write-Host "  Detectando IP de la red local..." -ForegroundColor DarkGray
+try {
+  $ip = (Get-NetRoute -DestinationPrefix "0.0.0.0/0" | Sort-Object RouteMetric | Select-Object -First 1 | Get-NetIPAddress | Where-Object AddressFamily -eq 'IPv4').IPAddress
+  if (-not $ip) { $ip = "127.0.0.1" }
+} catch {
+  $ip = "127.0.0.1"
+}
+
+$composePath = Join-Path $root 'docker-compose.yml'
+if (Test-Path $composePath) {
+  $content = Get-Content $composePath -Raw
+  $newContent = $content -replace "LAN_IP=.*", "LAN_IP=$ip"
+  if ($content -cne $newContent) {
+    Write-Host "  Actualizando docker-compose.yml con tu IP actual: $ip" -ForegroundColor DarkCyan
+    Set-Content -Path $composePath -Value $newContent
+  }
+}
+
 if ($Rebuild) {
   Write-Host "  Modo rebuild activo (--build)." -ForegroundColor DarkYellow
   docker compose up --build -d
@@ -23,15 +41,7 @@ if ($LASTEXITCODE -ne 0) {
   exit 1
 }
 
-# Resolver IP desde docker-compose para no desalinear QR/ESP32
-$ip = "192.168.2.245"
-$composePath = Join-Path $root 'docker-compose.yml'
-if (Test-Path $composePath) {
-  $m = Select-String -Path $composePath -Pattern 'LAN_IP=([0-9\.]+)' | Select-Object -First 1
-  if ($m -and $m.Matches.Count -gt 0) {
-    $ip = $m.Matches[0].Groups[1].Value
-  }
-}
+# IP detectada automáticamente arriba
 
 $port = "4000"
 

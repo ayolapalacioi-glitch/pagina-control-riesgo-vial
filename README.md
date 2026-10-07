@@ -23,7 +23,10 @@ Sistema edge-to-cloud para reducir mortalidad de peatones en pasos de cebra bajo
 - Integración directa con ESP32 por heartbeat + polling con detección online/offline en dashboard.
 - Configuración remota del semáforo ESP32 desde la web: TTL de solicitud, debounce backend, tiempos hold (`GREEN/RED/GRAY`) y modo manual (`AUTO/GREEN/RED/GRAY`).
 - Arranque seguro para demo móvil con túnel HTTPS de Cloudflare y publicación automática de URL pública para QR.
-- Certificado TLS autofirmado automático en contenedor backend, regenerado según IP LAN para facilitar pruebas móviles.
+- Integración de Cámara WiFi/IP VTA-84920 (Tuya Smart Life): soporte para streaming RTSP continuo a 30 FPS con proxy ultrarrápido `go2rtc`, endpoint MJPEG nativo (`/api/camera/stream.mjpg`) y WebSockets.
+- Soporte de Motion Tracking PTZ vía Tuya Cloud API para seguimiento motorizado de peatones/vehículos.
+- Calibración visual dinámica de zona con modo Cartelera (`BILLBOARD_MODE`).
+- **Guía de Configuración Rápida para Colaboradores**: Consulta [README_CONFIGURACION_CAMARA.md](file:///C:/Users/ayola/OneDrive/Desktop/Proyectos/Proyectoxspoiler/proyecto-seguridad-vial/README_CONFIGURACION_CAMARA.md) para los pasos claros y puesta en marcha inmediata.
 
 ## Librerías Backend (línea por línea)
 

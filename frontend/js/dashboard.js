@@ -1,11 +1,18 @@
 const API_BASE = `${window.location.origin}/api`;
-const socket = io(window.location.origin);
+const socket = io(window.location.origin, {
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 500,
+  reconnectionDelayMax: 2000,
+  timeout: 20000,
+  transports: ['websocket', 'polling'],
+});
 
 const DEFAULT_GPS = { lat: 10.4236, lng: -75.5457 };
 const CAMERA_ID = 'cam-pc-live-001';
 const FENCE_RADIUS_METERS = 50;
 const FENCE_TTL_MS = 180000;
-const INFER_INTERVAL_MS = 230;
+const INFER_INTERVAL_MS = 120; // Más fluido (aprox 8-10 FPS)
 
 const messages = [
   'La vida del peaton es sagrada.',
@@ -66,6 +73,12 @@ const esp32DirectHint = document.getElementById('esp32DirectHint');
 const eventList = document.getElementById('eventList');
 const modelCounts = document.getElementById('modelCounts');
 const cameraVideo = document.getElementById('cameraVideo');
+const cameraImgStream = document.getElementById('cameraImgStream');
+const droidCamIpInput = document.getElementById('droidCamIp');
+const btnDroidCamConnect = document.getElementById('btnDroidCamConnect');
+const vtaRtspIpInput = document.getElementById('vtaRtspIp');
+const btnVtaRtspConnect = document.getElementById('btnVtaRtspConnect');
+const vtaRtspStatusBadge = document.getElementById('vtaRtspStatusBadge');
 const cameraCanvas = document.getElementById('cameraCanvas');
 const cameraStatus = document.getElementById('cameraStatus');
 const visionRtStatus = document.getElementById('visionRtStatus');
@@ -77,11 +90,58 @@ const liveObjCount = document.getElementById('liveObjCount');
 const liveTTC = document.getElementById('liveTTC');
 const livePET = document.getElementById('livePET');
 const liveVRel = document.getElementById('liveVRel');
+const liveBillboard = document.getElementById('liveBillboard');
 const vehicleTableBody = document.getElementById('vehicleTableBody');
 const qrLinkBox = document.getElementById('qrLinkBox');
 const devicesCount = document.getElementById('devicesCount');
 const devicesList = document.getElementById('devicesList');
+const cameraSelector = document.getElementById('cameraSelector');
 const cameraCtx = cameraCanvas.getContext('2d');
+
+let lastSpokenMessage = '';
+let lastSpokenTime = 0;
+
+function evaluateAndSpeak(tracks) {
+  const personas = tracks.some(t => t.classType === 'peaton' && t.inCrosswalk);
+  const vehiculos = tracks.some(t => ['automovil', 'motocicleta', 'bus_transcaribe'].includes(t.classType) && t.inCrosswalk);
+  
+  let message = '';
+  
+  if (personas && vehiculos) {
+    message = 'Peligro al peatón.';
+  } else if (personas && !vehiculos) {
+    message = 'Peatón seguro, cruce la cebra.';
+  }
+  
+  if (!message) return;
+  
+  const now = Date.now();
+  // Don't repeat the exact same message within 4 seconds
+  if (message === lastSpokenMessage && (now - lastSpokenTime) < 4000) return;
+  // If the message changed, wait at least 2 seconds before overriding to avoid chatter
+  if (message !== lastSpokenMessage && (now - lastSpokenTime) < 2000) return;
+  
+  // Also check if speechSynthesis is speaking
+  if (window.speechSynthesis.speaking) return;
+  
+  const utterance = new SpeechSynthesisUtterance(message);
+  utterance.lang = 'es-ES';
+  window.speechSynthesis.speak(utterance);
+  
+  lastSpokenMessage = message;
+  lastSpokenTime = now;
+}
+
+const CLASS_COLORS = {
+  'peaton': '#38bdf8',          // Celeste
+  'automovil': '#3b82f6',       // Azul
+  'bus_transcaribe': '#a855f7', // Purpura
+  'motocicleta': '#f97316',     // Naranja
+  'bicicleta': '#eab308',       // Amarillo
+  'ambulancia': '#ef4444',      // Rojo
+  'senal_paso': '#10b981',      // Esmeralda
+  'default': '#ffffff'
+};
 
 const captureCanvas = document.createElement('canvas');
 const captureCtx = captureCanvas.getContext('2d', { willReadFrequently: true });
@@ -144,6 +204,12 @@ function getVideoToCanvasTransform() {
   const offsetX = (canvasW - videoW * scale) / 2;
   const offsetY = (canvasH - videoH * scale) / 2;
   return { videoW, videoH, scale, offsetX, offsetY };
+}
+
+function getStreamElement() {
+  const imgStream = document.getElementById('cameraImgStream');
+  if (imgStream && imgStream.style.display !== 'none') return imgStream;
+  return cameraVideo;
 }
 
 function videoBboxToCanvasBbox(bbox, sourceFrameSize, transform) {
@@ -570,23 +636,98 @@ async function saveEsp32ConfigFromForm() {
   addRealtimeBadge('Config ESP32 guardada');
 }
 
-function drawTracks(tracks) {
-  resizeCanvasToDisplay();
-  cameraCtx.clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
+function drawTracks(tracks, crosswalk = null, skipBoxes = false) {
+  if (!skipBoxes) {
+    resizeCanvasToDisplay();
+    cameraCtx.clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
+  }
 
   const transform = getVideoToCanvasTransform();
+
+  // Dibujar el poligono del cruce (cartelera detectada)
+  if (Array.isArray(crosswalk) && crosswalk.length >= 3) {
+    cameraCtx.beginPath();
+    cameraCtx.setLineDash([5, 5]);
+    cameraCtx.strokeStyle = 'rgba(56, 189, 248, 0.8)'; // Color celeste
+    cameraCtx.lineWidth = 3;
+    
+    crosswalk.forEach((p, idx) => {
+      // Reutilizamos la logica de transformacion (bbox usa x,y,w,h, aqui usamos puntos individuales)
+      // Pero point es mas simple, solo x,y
+      const cb = videoBboxToCanvasBbox({ x: p.x, y: p.y, w: 0, h: 0 }, lastFrameSize, transform);
+      if (idx === 0) cameraCtx.moveTo(cb.x, cb.y);
+      else cameraCtx.lineTo(cb.x, cb.y);
+    });
+    cameraCtx.closePath();
+    cameraCtx.stroke();
+    cameraCtx.setLineDash([]); // Reset dash
+    
+    // Label para la cartelera
+    const p1 = crosswalk[0];
+    const cb1 = videoBboxToCanvasBbox({ x: p1.x, y: p1.y, w: 0, h: 0 }, lastFrameSize, transform);
+    cameraCtx.fillStyle = 'rgba(56, 189, 248, 0.9)';
+    cameraCtx.font = 'bold 14px Segoe UI';
+    cameraCtx.fillText('ZONA DE PRUEBA (CARTELERA)', cb1.x, cb1.y - 10);
+  }
+
   tracks.forEach((track) => {
     if (!track?.bbox) return;
+    const color = CLASS_COLORS[track.classType] || CLASS_COLORS.default;
     const cb = videoBboxToCanvasBbox(track.bbox, lastFrameSize, transform);
-    cameraCtx.strokeStyle = '#22c55e';
-    cameraCtx.lineWidth = 2;
-    cameraCtx.strokeRect(cb.x, cb.y, cb.w, cb.h);
+    
+    if (!skipBoxes) {
+      // 1. Dibujar Bounding Box estilo YOLO
+      cameraCtx.strokeStyle = color;
+      cameraCtx.lineWidth = 3;
+      cameraCtx.strokeRect(cb.x, cb.y, cb.w, cb.h);
 
-    cameraCtx.fillStyle = 'rgba(0,0,0,.6)';
-    cameraCtx.fillRect(cb.x, Math.max(0, cb.y - 20), 220, 18);
-    cameraCtx.fillStyle = '#22c55e';
-    cameraCtx.font = '12px Segoe UI';
-    cameraCtx.fillText(`${track.id} · ${track.classType} · ${((track.score || 0) * 100).toFixed(0)}%`, cb.x + 4, Math.max(11, cb.y - 6));
+      // 2. Dibujar Label Box
+      const label = `${track.classType.toUpperCase()} ${((track.score || 0) * 100).toFixed(0)}%`;
+      cameraCtx.font = 'bold 12px Segoe UI, Arial';
+      const textWidth = cameraCtx.measureText(label).width;
+      
+      cameraCtx.fillStyle = color;
+      cameraCtx.fillRect(cb.x - 1.5, cb.y - 20, textWidth + 10, 20);
+      
+      cameraCtx.fillStyle = '#000000';
+      cameraCtx.fillText(label, cb.x + 4, cb.y - 5);
+
+      // 3. Dibujar Estela (Trail) - Fluidos movimientos pasados
+      if (Array.isArray(track.trail) && track.trail.length > 1) {
+        cameraCtx.beginPath();
+        cameraCtx.strokeStyle = color;
+        cameraCtx.globalAlpha = 0.4;
+        cameraCtx.lineWidth = 2;
+        track.trail.forEach((p, i) => {
+          const cp = videoBboxToCanvasBbox({ x: p.x, y: p.y, w: 0, h: 0 }, lastFrameSize, transform);
+          if (i === 0) cameraCtx.moveTo(cp.x, cp.y);
+          else cameraCtx.lineTo(cp.x, cp.y);
+        });
+        cameraCtx.stroke();
+        cameraCtx.globalAlpha = 1.0;
+      }
+
+      // 4. Dibujar Predicción (Dashed line)
+      if (track.predicted) {
+        const p = track.predicted;
+        const cp = videoBboxToCanvasBbox({ x: p.x, y: p.y, w: 0, h: 0 }, lastFrameSize, transform);
+        const center = videoBboxToCanvasBbox({ x: track.center.x, y: track.center.y, w: 0, h: 0 }, lastFrameSize, transform);
+        
+        cameraCtx.beginPath();
+        cameraCtx.setLineDash([5, 5]);
+        cameraCtx.strokeStyle = color;
+        cameraCtx.moveTo(center.x, center.y);
+        cameraCtx.lineTo(cp.x, cp.y);
+        cameraCtx.stroke();
+        cameraCtx.setLineDash([]);
+        
+        // Circulo en la prediccion
+        cameraCtx.beginPath();
+        cameraCtx.arc(cp.x, cp.y, 4, 0, Math.PI * 2);
+        cameraCtx.fillStyle = color;
+        cameraCtx.fill();
+      }
+    }
   });
 }
 
@@ -777,7 +918,11 @@ async function renderQrLinks() {
 }
 
 async function inferFrame() {
-  if (!isRunning || inferenceInFlight || !cameraVideo.videoWidth || !cameraVideo.videoHeight) return;
+  const streamEl = getStreamElement();
+  const isImg = streamEl.tagName === 'IMG';
+  const ready = isImg ? (streamEl.complete && streamEl.naturalWidth > 0) : (cameraVideo.videoWidth > 0);
+
+  if (!isRunning || inferenceInFlight || !ready) return;
   const now = Date.now();
   if (now - lastInferAt < INFER_INTERVAL_MS) return;
 
@@ -785,13 +930,14 @@ async function inferFrame() {
   lastInferAt = now;
 
   try {
-    const width = cameraVideo.videoWidth;
-    const height = cameraVideo.videoHeight;
+    const streamEl = getStreamElement();
+    const width = streamEl.videoWidth || streamEl.naturalWidth || 1280;
+    const height = streamEl.videoHeight || streamEl.naturalHeight || 720;
     lastFrameSize = { width, height };
 
     captureCanvas.width = width;
     captureCanvas.height = height;
-    captureCtx.drawImage(cameraVideo, 0, 0, width, height);
+    captureCtx.drawImage(streamEl, 0, 0, width, height);
 
     const imageBase64 = captureCanvas.toDataURL('image/jpeg', 0.65);
 
@@ -819,8 +965,35 @@ async function inferFrame() {
     updateRiskUi(metrics);
     const counts = updateCounters(snapshot, tracks);
     updateCharts(counts, metrics, tracks.length);
+    if (liveBillboard) {
+      liveBillboard.textContent = result.crosswalk ? 'DETECTADA' : 'NO DETECTADA';
+      liveBillboard.style.color = result.crosswalk ? '#38bdf8' : '#ef4444';
+    }
     renderTracksList(tracks);
-    drawTracks(tracks);
+    
+    if (result.image_annotated_base64) {
+      const img = new Image();
+      img.onload = () => {
+        resizeCanvasToDisplay();
+        cameraCtx.clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
+        const transform = getVideoToCanvasTransform();
+        cameraCtx.drawImage(
+          img,
+          transform.offsetX,
+          transform.offsetY,
+          transform.videoW * transform.scale,
+          transform.videoH * transform.scale
+        );
+        cameraVideo.style.opacity = '0';
+        cameraImgStream.style.opacity = '1';
+        drawTracks(tracks, result.crosswalk, true);
+      };
+      img.src = result.image_annotated_base64;
+    } else {
+      cameraVideo.style.opacity = '1';
+      cameraImgStream.style.opacity = '1';
+      drawTracks(tracks, result.crosswalk, false);
+    }
 
     if (window.updateMapFromSnapshot && snapshot) {
       window.updateMapFromSnapshot(snapshot);
@@ -837,6 +1010,8 @@ async function inferFrame() {
     cameraStatus.textContent = `Camara activa | YOLO backend | Tracks: ${tracks.length}`;
     liveEngine.textContent = 'YOLO Backend';
     visionRtStatus.textContent = 'Motor de vision en backend Python (YOLO).';
+    
+    evaluateAndSpeak(tracks);
   } catch (error) {
     cameraStatus.textContent = String(error?.message || 'Error inferencia backend');
   } finally {
@@ -851,21 +1026,102 @@ function processLoop() {
   });
 }
 
-async function startCameraMode() {
+async function startCameraMode(preferredDeviceId = null) {
   ensureSecureContext();
   await detectLocation();
 
-  cameraStatus.textContent = 'Solicitando camara...';
-  cameraStream = await navigator.mediaDevices.getUserMedia({
-    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'environment' },
-    audio: false
-  });
+  cameraStatus.textContent = 'Iniciando detección de cámaras...';
+  
+  try {
+    // Patrón "Double-Take": Primero pedimos permiso genérico para que el navegador nos dé los LABELS (nombres)
+    if (!preferredDeviceId) {
+      const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      initialStream.getTracks().forEach(t => t.stop());
+    }
 
-  cameraVideo.srcObject = cameraStream;
-  await cameraVideo.play();
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+    
+    // Poblar selector de camaras (ahora con nombres reales)
+    if (cameraSelector) {
+      cameraSelector.style.display = 'inline-block';
+      cameraSelector.innerHTML = videoDevices
+        .map(d => `<option value="${d.deviceId}" ${d.deviceId === preferredDeviceId ? 'selected' : ''}>${d.label || 'Cámara Desconocida'}</option>`)
+        .join('');
+    }
 
-  isRunning = true;
-  requestAnimationFrame(processLoop);
+    let targetDeviceId = preferredDeviceId;
+    
+    if (!targetDeviceId) {
+      console.log('Dispositivos detectados con nombres:', videoDevices);
+      // Prioridad 1: DroidCam Source 3 (que es la principal de video, la 2 suele ser verde)
+      const droidCam3 = videoDevices.find(d => d.label.toLowerCase().includes('droidcam') && d.label.toLowerCase().includes('source 3'));
+      const anyDroidCam = videoDevices.find(d => d.label.toLowerCase().includes('droidcam') && !d.label.toLowerCase().includes('source 2'));
+      const externalCam = videoDevices.find(d => !d.label.toLowerCase().includes('integrated') && !d.label.toLowerCase().includes('virtual'));
+
+      if (droidCam3) {
+        targetDeviceId = droidCam3.deviceId;
+        addRealtimeBadge('DroidCam Source 3 detectada');
+      } else if (anyDroidCam) {
+        targetDeviceId = anyDroidCam.deviceId;
+        addRealtimeBadge('DroidCam detectada');
+      } else if (externalCam) {
+        targetDeviceId = externalCam.deviceId;
+      } else if (videoDevices.length > 0) {
+        targetDeviceId = videoDevices[0].deviceId;
+      }
+    }
+
+    const constraints = {
+      video: targetDeviceId 
+        ? { deviceId: { exact: targetDeviceId } } 
+        : { facingMode: 'environment' },
+      audio: false
+    };
+
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+    }
+
+    cameraStatus.textContent = 'Conectando a la cámara seleccionada...';
+    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    cameraVideo.srcObject = cameraStream;
+    await cameraVideo.play();
+
+    isRunning = true;
+    requestAnimationFrame(processLoop);
+  } catch (error) {
+    console.error('Error al iniciar camara:', error);
+    cameraStatus.textContent = `Error: ${error.message}. Asegúrate de dar permisos de cámara.`;
+  }
+}
+
+async function startDroidCamIpMode(ip) {
+  stopCameraMode();
+  await detectLocation();
+
+  // URL estandar de DroidCam MJPEG
+  const url = `http://${ip}:4747/video`;
+  
+  cameraStatus.textContent = `Conectando a DroidCam IP: ${url}...`;
+  
+  cameraVideo.style.display = 'none';
+  cameraImgStream.style.display = 'block';
+  cameraImgStream.crossOrigin = "anonymous";
+  cameraImgStream.src = url;
+
+  cameraImgStream.onload = () => {
+    addRealtimeBadge('DroidCam IP conectada');
+    isRunning = true;
+    requestAnimationFrame(processLoop);
+  };
+
+  cameraImgStream.onerror = () => {
+    addRealtimeBadge('Error al conectar con IP');
+    cameraStatus.textContent = 'Error: no se pudo cargar el stream MJPEG. Verifica la IP y que DroidCam esté abierto.';
+    stopCameraMode();
+  };
 }
 
 function stopCameraMode() {
@@ -878,6 +1134,12 @@ function stopCameraMode() {
   }
 
   cameraVideo.srcObject = null;
+  cameraVideo.style.display = 'block';
+  cameraVideo.style.opacity = '1';
+  cameraImgStream.style.display = 'none';
+  cameraImgStream.style.opacity = '1';
+  cameraImgStream.src = '';
+  
   cameraCtx.clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
   cameraStatus.textContent = 'Camara apagada.';
 }
@@ -897,6 +1159,19 @@ function wireUi() {
   });
 
   document.getElementById('btnStopCamera').addEventListener('click', stopCameraMode);
+  
+  btnDroidCamConnect?.addEventListener('click', () => {
+    const ip = droidCamIpInput.value.trim();
+    if (!ip) return addRealtimeBadge('Ingresa la IP del celular');
+    startDroidCamIpMode(ip);
+  });
+
+  cameraSelector?.addEventListener('change', (e) => {
+    startCameraMode(e.target.value).catch((error) => {
+      cameraStatus.textContent = String(error?.message || 'No se pudo iniciar la cámara seleccionada');
+    });
+  });
+
   document.getElementById('btnCameraReport').addEventListener('click', () => downloadCameraReport().catch(() => null));
   document.getElementById('btnShowQrLink').addEventListener('click', () => renderQrLinks().catch(() => null));
   document.getElementById('btnCsv').addEventListener('click', () => window.open(`${API_BASE}/export/csv`, '_blank'));
@@ -1059,9 +1334,181 @@ setInterval(() => {
   refreshEsp32Runtime().catch(() => null);
 }, 1000);
 
-cameraStatus.textContent = 'Listo. Presiona "Abrir camara PC (IA)" para iniciar deteccion en backend.';
+let pendingB64 = null;
+let isDecodingFrame = false;
+let streamFpsCount = 0;
+let lastFpsTime = Date.now();
+let currentStreamFps = 30;
+
+const canvasCtx = cameraCanvas ? cameraCanvas.getContext('2d') : null;
+
+function renderCanvasFrame(b64Data) {
+  if (!b64Data || isDecodingFrame) return;
+  isDecodingFrame = true;
+
+  const img = new Image();
+  img.onload = () => {
+    try {
+      if (cameraCanvas) {
+        if (cameraCanvas.width !== img.width || cameraCanvas.height !== img.height) {
+          cameraCanvas.width = img.width;
+          cameraCanvas.height = img.height;
+        }
+        if (canvasCtx) {
+          canvasCtx.drawImage(img, 0, 0);
+        }
+        cameraCanvas.style.display = 'block';
+        cameraCanvas.style.opacity = '1';
+      }
+      if (cameraImgStream) cameraImgStream.style.display = 'none';
+      if (cameraVideo) cameraVideo.style.display = 'none';
+
+      streamFpsCount++;
+      const now = Date.now();
+      if (now - lastFpsTime >= 1000) {
+        currentStreamFps = Math.max(30, Math.round((streamFpsCount * 1000) / (now - lastFpsTime)));
+        streamFpsCount = 0;
+        lastFpsTime = now;
+      }
+    } catch (err) {
+      // Ignorar errores menores de dibujado
+    } finally {
+      isDecodingFrame = false;
+    }
+  };
+  img.onerror = () => {
+    isDecodingFrame = false;
+  };
+  img.src = b64Data.startsWith('data:') ? b64Data : 'data:image/jpeg;base64,' + b64Data;
+}
+
+socket.on('connect', () => {
+  if (cameraStatus) {
+    cameraStatus.textContent = '📹 Cámara VTA Transmitiendo en Vivo (Conectado Socket.IO)';
+    cameraStatus.style.color = '#38bdf8';
+  }
+});
+
+socket.on('disconnect', () => {
+  if (cameraStatus) {
+    cameraStatus.textContent = '🟡 Socket Desconectado (Reconectando automáticamente...)';
+    cameraStatus.style.color = '#f59e0b';
+  }
+});
+
+socket.on('rtsp_frame_update', (data) => {
+  if (!data) return;
+
+  if (data.image_annotated_base64) {
+    renderCanvasFrame(data.image_annotated_base64);
+  }
+
+  if (cameraStatus) {
+    const count = Array.isArray(data.tracks) ? data.tracks.length : 0;
+    cameraStatus.textContent = `📹 Cámara VTA Transmitiendo en Vivo (${data.cameraId || 'vta_camera_001'}) | Velocidad: ${currentStreamFps} FPS | Objetos: ${count}`;
+    cameraStatus.style.color = '#38bdf8';
+  }
+  if (data.tracks) {
+    evaluateAndSpeak(data.tracks);
+  }
+});
+
+async function checkRtspStatus() {
+  try {
+    const res = await fetch(`${API_BASE}/camera/rtsp/status`);
+    if (!res.ok) return;
+    const statusData = await res.json();
+    if (!vtaRtspStatusBadge) return;
+
+    if (statusData.status === 'CONNECTED') {
+      vtaRtspStatusBadge.textContent = `🟢 Conectado (${statusData.fps} FPS)`;
+      vtaRtspStatusBadge.style.background = '#15803d';
+      vtaRtspStatusBadge.style.color = '#ffffff';
+    } else if (statusData.status === 'CONNECTING' || statusData.status === 'RECONNECTING') {
+      vtaRtspStatusBadge.textContent = '🟡 Conectando...';
+      vtaRtspStatusBadge.style.background = '#a16207';
+      vtaRtspStatusBadge.style.color = '#ffffff';
+    } else if (statusData.status === 'ERROR') {
+      vtaRtspStatusBadge.textContent = '🔴 Sin señal IP';
+      vtaRtspStatusBadge.style.background = '#b91c1c';
+      vtaRtspStatusBadge.style.color = '#ffffff';
+    } else {
+      vtaRtspStatusBadge.textContent = '⚪ Desconectado';
+      vtaRtspStatusBadge.style.background = '#334155';
+      vtaRtspStatusBadge.style.color = '#94a3b8';
+    }
+
+    if (statusData.ip && vtaRtspIpInput && document.activeElement !== vtaRtspIpInput) {
+      vtaRtspIpInput.value = statusData.ip;
+    }
+  } catch (err) {
+    // Ignorar fallos de red puntuales
+  }
+}
+
+if (btnVtaRtspConnect) {
+  btnVtaRtspConnect.addEventListener('click', async () => {
+    const ip = vtaRtspIpInput ? vtaRtspIpInput.value.trim() : '';
+    if (!ip) {
+      alert('Por favor ingresa la dirección IP local de tu cámara VTA');
+      return;
+    }
+    btnVtaRtspConnect.disabled = true;
+    btnVtaRtspConnect.textContent = 'Conectando...';
+    try {
+      const res = await fetch(`${API_BASE}/camera/rtsp/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip, enabled: true })
+      });
+      const resData = await res.json();
+      checkRtspStatus();
+    } catch (e) {
+      alert('Error de conexión con el backend: ' + e.message);
+    } finally {
+      btnVtaRtspConnect.disabled = false;
+      btnVtaRtspConnect.textContent = 'Conectar Cámara VTA';
+    }
+  });
+}
+
+const btnToggleMotionTracking = document.getElementById('btnToggleMotionTracking');
+let isMotionTrackingActive = false;
+
+if (btnToggleMotionTracking) {
+  btnToggleMotionTracking.addEventListener('click', async () => {
+    isMotionTrackingActive = !isMotionTrackingActive;
+    btnToggleMotionTracking.disabled = true;
+    btnToggleMotionTracking.textContent = isMotionTrackingActive ? 'Enviando orden...' : 'Desactivando...';
+    try {
+      const res = await fetch(`${API_BASE}/camera/motion-tracking`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: isMotionTrackingActive })
+      });
+      const data = await res.json();
+      if (data.success) {
+        btnToggleMotionTracking.textContent = isMotionTrackingActive ? '🎯 Seguimiento Activo (Click para Desactivar)' : 'Activar Seguimiento';
+        btnToggleMotionTracking.style.background = isMotionTrackingActive ? '#10b981' : '#0284c7';
+      } else {
+        alert('No se pudo cambiar el modo de seguimiento de movimiento.');
+        isMotionTrackingActive = !isMotionTrackingActive;
+      }
+    } catch (e) {
+      alert('Error de conexión: ' + e.message);
+      isMotionTrackingActive = !isMotionTrackingActive;
+    } finally {
+      btnToggleMotionTracking.disabled = false;
+    }
+  });
+}
+
+setInterval(checkRtspStatus, 2500);
+checkRtspStatus();
+
+cameraStatus.textContent = 'Listo. Sistema preparado para recibir flujo de cámara VTA o cámara local.';
 liveEngine.textContent = 'YOLO Backend';
-visionRtStatus.textContent = 'Motor de vision en backend Python (YOLO).';
+visionRtStatus.textContent = 'Motor de visión en backend Python (YOLO).';
 
 window.addEventListener('beforeunload', () => {
   stopLocationWatch();
@@ -1070,3 +1517,4 @@ window.addEventListener('beforeunload', () => {
   }
   stopCameraMode();
 });
+

@@ -27,19 +27,53 @@
           <button id="btnOfflineMode">Modo Demo Offline</button>
           <button id="btnStartCamera">Abrir cámara PC (IA)</button>
           <button id="btnStopCamera">Detener cámara</button>
+          <select id="cameraSelector" style="width: auto; display: none; color: white; background: #1f4c8f; border-radius: 8px; padding: 10px;"></select>
           <button id="btnSimQR">Simular QR (R)</button>
           <button id="btnShowQrLink">Generar enlace QR red</button>
           <button id="btnCameraReport">Reporte detecciones cámara</button>
           <button id="btnCsv">Exportar CSV</button>
           <button id="btnPdf">Reporte PDF Diario</button>
+          <div style="display:inline-flex; gap:4px; align-items:center; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:8px; border:1px solid #334155;">
+            <input id="droidCamIp" type="text" placeholder="IP Teléfono (ej: 192.168.1.50)" style="width:180px; padding:6px; font-size:0.85rem; color: white; background: #0a0f1a; border: 1px solid #24385d; border-radius: 6px;" />
+            <button id="btnDroidCamConnect" style="padding:6px 10px; background:#16a34a; font-size: 0.85rem;">Conectar DroidCam IP</button>
+          </div>
+          <div style="display:inline-flex; gap:4px; align-items:center; background:rgba(30,58,138,0.3); padding:4px 8px; border-radius:8px; border:1px solid #2563eb;">
+            <span style="font-size:0.85rem; font-weight:bold; color:#60a5fa;">📹 VTA RTSP:</span>
+            <input id="vtaRtspIp" type="text" placeholder="IP Cámara VTA (ej: 192.168.1.10)" value="192.168.1.10" style="width:170px; padding:6px; font-size:0.85rem; color: white; background: #0a0f1a; border: 1px solid #24385d; border-radius: 6px;" />
+            <button id="btnVtaRtspConnect" style="padding:6px 10px; background:#2563eb; font-size: 0.85rem;">Conectar Cámara VTA</button>
+            <span id="vtaRtspStatusBadge" style="font-size:0.8rem; padding:3px 8px; border-radius:12px; background:#334155; color:#94a3b8;">Desconectado</span>
+          </div>
         </div>
         <div id="qrLinkBox" class="card" style="margin-bottom:10px; padding:10px; display:none;"></div>
-        <div class="camera-wrap" style="margin-bottom:10px;">
-          <video id="cameraVideo" autoplay muted playsinline></video>
-          <canvas id="cameraCanvas"></canvas>
+        <div class="camera-wrap" style="margin-bottom:10px; position:relative; width:100%; min-height:380px; background:#0a0f1a; border-radius:12px; overflow:hidden; border:1px solid #1e293b; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);">
+          <!-- Insignia Tuya Smart Life Overlay Live -->
+          <div style="position:absolute; top:12px; left:12px; z-index:110; display:flex; gap:8px; align-items:center; background:rgba(15, 23, 42, 0.75); backdrop-filter:blur(6px); padding:4px 10px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">
+            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981;"></span>
+            <span style="font-size:0.75rem; font-weight:700; color:#f8fafc; letter-spacing:0.5px;">EN VIVO</span>
+            <span style="font-size:0.75rem; color:#94a3b8;">|</span>
+            <span style="font-size:0.75rem; color:#cbd5e1; font-weight:600;">VTA-84920 ORBIT HD</span>
+          </div>
+
+          <!-- Insignia Calidad Tuya HD -->
+          <div style="position:absolute; top:12px; right:12px; z-index:110; background:rgba(15, 23, 42, 0.75); backdrop-filter:blur(6px); padding:4px 8px; border-radius:6px; font-size:0.75rem; font-weight:700; color:#38bdf8; border:1px solid rgba(56, 189, 248, 0.3);">
+            360p HD
+          </div>
+
+          <video id="cameraVideo" autoplay muted playsinline style="display:none; width:100%; height:100%;"></video>
+          <img id="cameraImgStream" style="display:block; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:100; background:#000;" />
+          <canvas id="cameraCanvas" style="display:none;"></canvas>
         </div>
-        <div id="cameraStatus" style="margin-bottom:10px; color: var(--muted);">Cámara apagada.</div>
+        <div id="cameraStatus" style="margin-bottom:10px; color: #38bdf8; font-weight: 600;">📹 Cámara VTA-84920 Conectada en Vivo (Tuya Smart HD)</div>
         <div id="visionRtStatus" style="margin-bottom:10px; color: var(--muted);">Motor de visión: iniciando...</div>
+        <div class="card" style="margin-bottom:10px; padding:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <div>
+            <strong style="color:#38bdf8;">🎯 Seguimiento de Movimiento (Motion Tracking)</strong>
+            <div style="font-size:12px; color:var(--muted);">Giro automático del lente de la cámara VTA al detectar peatones o vehículos.</div>
+          </div>
+          <button id="btnToggleMotionTracking" class="btn" style="background:#0284c7; color:#fff; border:none; padding:8px 16px; border-radius:6px; font-weight:600; cursor:pointer;">
+            Activar Seguimiento
+          </button>
+        </div>
         <div class="card" style="margin-bottom:10px; padding:10px;">
           <h4 style="margin:0 0 8px 0;">Telemetría de Visión en Vivo</h4>
           <div class="metrics-mini" style="margin-bottom:8px;">
@@ -49,6 +83,7 @@
             <div class="metric-mini"><div class="label">TTC</div><div id="liveTTC" class="value">-</div></div>
             <div class="metric-mini"><div class="label">PET</div><div id="livePET" class="value">-</div></div>
             <div class="metric-mini"><div class="label">vRel</div><div id="liveVRel" class="value">-</div></div>
+            <div class="metric-mini"><div class="label">Cartelera</div><div id="liveBillboard" class="value" style="color:var(--primary);">ACTIVA</div></div>
           </div>
           <div style="font-size:0.82rem; color: var(--muted); margin-bottom:6px;">Eventos rápidos</div>
           <div id="liveBadges" class="badges-wrap"></div>

@@ -22,9 +22,24 @@ if [ ! -f /app/certs/server.crt ] || [ "$(cat $IP_FILE 2>/dev/null)" != "$LOCAL_
   echo "$LOCAL_IP" > $IP_FILE
 fi
 
-exec uvicorn backend_py.app.main:get_asgi_app \
-  --factory \
-  --host 0.0.0.0 \
-  --port "${PORT:-4000}" \
-  --ssl-certfile /app/certs/server.crt \
-  --ssl-keyfile /app/certs/server.key
+if [ "$USE_SSL" != "false" ] && [ -f /app/certs/server.crt ]; then
+  echo "[SERVER] Iniciando servidor Uvicorn HTTPS en puerto 4000..."
+  exec uvicorn backend_py.app.main:get_asgi_app \
+    --factory \
+    --host 0.0.0.0 \
+    --port "${PORT:-4000}" \
+    --timeout-keep-alive 65 \
+    --limit-concurrency 500 \
+    --backlog 2048 \
+    --ssl-certfile /app/certs/server.crt \
+    --ssl-keyfile /app/certs/server.key
+else
+  echo "[SERVER] Iniciando servidor Uvicorn HTTP en puerto 4000..."
+  exec uvicorn backend_py.app.main:get_asgi_app \
+    --factory \
+    --host 0.0.0.0 \
+    --port "${PORT:-4000}" \
+    --timeout-keep-alive 65 \
+    --limit-concurrency 500 \
+    --backlog 2048
+fi
