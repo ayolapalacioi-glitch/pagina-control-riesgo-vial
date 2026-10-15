@@ -3,181 +3,737 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Seguridad Vial Inteligente - Visión Cero</title>
+  <meta name="theme-color" content="#070c18" />
+  <title>SafeCrossing AI - Seguridad Vial Inteligente | Visión Cero</title>
+  
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Design System CSS -->
   <link rel="stylesheet" href="css/tailwind.css" />
 </head>
 <body>
-  <div class="container">
-    <h1>🚸 Seguridad Vial Inteligente - Sistema Seguro</h1>
-    <p class="banner" id="ansvMessage">La vida del peatón es sagrada. Respeta la cebra, salva vidas.</p>
 
-    <div class="grid grid-4">
-      <div class="card"><div class="kpi-label">Peatones</div><div class="kpi-value" id="kpiPeaton">0</div></div>
-      <div class="card"><div class="kpi-label">Motocicletas</div><div class="kpi-value" id="kpiMoto">0</div></div>
-      <div class="card"><div class="kpi-label">Automóviles</div><div class="kpi-value" id="kpiAuto">0</div></div>
-      <div class="card"><div class="kpi-label">Buses BRT</div><div class="kpi-value" id="kpiBus">0</div></div>
-    </div>
+  <!-- Backdrop for Mobile Sidebar Drawer -->
+  <div id="sidebarBackdrop" class="sidebar-backdrop" aria-hidden="true"></div>
 
-    <div class="row" style="margin-top: 12px;">
-      <div class="card">
-        <h3>Mapa Demográfico y Riesgo</h3>
-        <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap: wrap;">
-          <button id="btnSimulate">Simular múltiples cámaras</button>
-          <button id="btnOfflineMode">Modo Demo Offline</button>
-          <button id="btnStartCamera">Abrir cámara PC (IA)</button>
-          <button id="btnStopCamera">Detener cámara</button>
-          <select id="cameraSelector" style="width: auto; display: none; color: white; background: #1f4c8f; border-radius: 8px; padding: 10px;"></select>
-          <button id="btnSimQR">Simular QR (R)</button>
-          <button id="btnShowQrLink">Generar enlace QR red</button>
-          <button id="btnCameraReport">Reporte detecciones cámara</button>
-          <button id="btnCsv">Exportar CSV</button>
-          <button id="btnPdf">Reporte PDF Diario</button>
-          <div style="display:inline-flex; gap:4px; align-items:center; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:8px; border:1px solid #334155;">
-            <input id="droidCamIp" type="text" placeholder="IP Teléfono (ej: 192.168.1.50)" style="width:180px; padding:6px; font-size:0.85rem; color: white; background: #0a0f1a; border: 1px solid #24385d; border-radius: 6px;" />
-            <button id="btnDroidCamConnect" style="padding:6px 10px; background:#16a34a; font-size: 0.85rem;">Conectar DroidCam IP</button>
-          </div>
-          <div style="display:inline-flex; gap:4px; align-items:center; background:rgba(30,58,138,0.3); padding:4px 8px; border-radius:8px; border:1px solid #2563eb;">
-            <span style="font-size:0.85rem; font-weight:bold; color:#60a5fa;">📹 VTA RTSP:</span>
-            <input id="vtaRtspIp" type="text" placeholder="IP Cámara VTA (ej: 192.168.1.10)" value="192.168.1.10" style="width:170px; padding:6px; font-size:0.85rem; color: white; background: #0a0f1a; border: 1px solid #24385d; border-radius: 6px;" />
-            <button id="btnVtaRtspConnect" style="padding:6px 10px; background:#2563eb; font-size: 0.85rem;">Conectar Cámara VTA</button>
-            <span id="vtaRtspStatusBadge" style="font-size:0.8rem; padding:3px 8px; border-radius:12px; background:#334155; color:#94a3b8;">Desconectado</span>
-          </div>
+  <div class="app-shell">
+    
+    <!-- ====================================================================
+         LATERAL MENU / SIDEBAR (Menú Lateral)
+         ==================================================================== -->
+    <aside id="appSidebar" class="app-sidebar" aria-label="Menú lateral de navegación">
+      <div class="sidebar-brand">
+        <div class="brand-icon-box">🚸</div>
+        <div class="brand-text-wrap">
+          <span class="brand-title">SafeCrossing</span>
+          <span class="brand-subtitle">Visión Cero · AI</span>
         </div>
-        <div id="qrLinkBox" class="card" style="margin-bottom:10px; padding:10px; display:none;"></div>
-        <div class="camera-wrap" style="margin-bottom:10px; position:relative; width:100%; min-height:380px; background:#0a0f1a; border-radius:12px; overflow:hidden; border:1px solid #1e293b; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);">
-          <!-- Insignia Tuya Smart Life Overlay Live -->
-          <div style="position:absolute; top:12px; left:12px; z-index:110; display:flex; gap:8px; align-items:center; background:rgba(15, 23, 42, 0.75); backdrop-filter:blur(6px); padding:4px 10px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">
-            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981;"></span>
-            <span style="font-size:0.75rem; font-weight:700; color:#f8fafc; letter-spacing:0.5px;">EN VIVO</span>
-            <span style="font-size:0.75rem; color:#94a3b8;">|</span>
-            <span style="font-size:0.75rem; color:#cbd5e1; font-weight:600;">VTA-84920 ORBIT HD</span>
-          </div>
-
-          <!-- Insignia Calidad Tuya HD -->
-          <div style="position:absolute; top:12px; right:12px; z-index:110; background:rgba(15, 23, 42, 0.75); backdrop-filter:blur(6px); padding:4px 8px; border-radius:6px; font-size:0.75rem; font-weight:700; color:#38bdf8; border:1px solid rgba(56, 189, 248, 0.3);">
-            360p HD
-          </div>
-
-          <video id="cameraVideo" autoplay muted playsinline style="display:none; width:100%; height:100%;"></video>
-          <img id="cameraImgStream" style="display:block; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:100; background:#000;" />
-          <canvas id="cameraCanvas" style="display:none;"></canvas>
-        </div>
-        <div id="cameraStatus" style="margin-bottom:10px; color: #38bdf8; font-weight: 600;">📹 Cámara VTA-84920 Conectada en Vivo (Tuya Smart HD)</div>
-        <div id="visionRtStatus" style="margin-bottom:10px; color: var(--muted);">Motor de visión: iniciando...</div>
-        <div class="card" style="margin-bottom:10px; padding:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-          <div>
-            <strong style="color:#38bdf8;">🎯 Seguimiento de Movimiento (Motion Tracking)</strong>
-            <div style="font-size:12px; color:var(--muted);">Giro automático del lente de la cámara VTA al detectar peatones o vehículos.</div>
-          </div>
-          <button id="btnToggleMotionTracking" class="btn" style="background:#0284c7; color:#fff; border:none; padding:8px 16px; border-radius:6px; font-weight:600; cursor:pointer;">
-            Activar Seguimiento
-          </button>
-        </div>
-        <div class="card" style="margin-bottom:10px; padding:10px;">
-          <h4 style="margin:0 0 8px 0;">Telemetría de Visión en Vivo</h4>
-          <div class="metrics-mini" style="margin-bottom:8px;">
-            <div class="metric-mini"><div class="label">Motor</div><div id="liveEngine" class="value">-</div></div>
-            <div class="metric-mini"><div class="label">Riesgo</div><div id="liveRisk" class="value">-</div></div>
-            <div class="metric-mini"><div class="label">Objetos</div><div id="liveObjCount" class="value">0</div></div>
-            <div class="metric-mini"><div class="label">TTC</div><div id="liveTTC" class="value">-</div></div>
-            <div class="metric-mini"><div class="label">PET</div><div id="livePET" class="value">-</div></div>
-            <div class="metric-mini"><div class="label">vRel</div><div id="liveVRel" class="value">-</div></div>
-            <div class="metric-mini"><div class="label">Cartelera</div><div id="liveBillboard" class="value" style="color:var(--primary);">ACTIVA</div></div>
-          </div>
-          <div style="font-size:0.82rem; color: var(--muted); margin-bottom:6px;">Eventos rápidos</div>
-          <div id="liveBadges" class="badges-wrap"></div>
-        </div>
-        <div id="map"></div>
       </div>
 
-      <div class="grid">
-        <div class="card">
-          <h3>Nivel de Riesgo Actual</h3>
-          <div id="riskPill" class="risk-pill risk-bajo">🟢 BAJO</div>
-          <div id="riskDetails" style="margin-top:8px; color: var(--muted);">Sin eventos críticos recientes.</div>
+      <div class="sidebar-status-banner">
+        <span class="status-dot-pulse"></span>
+        <span>Sistema Operativo en Vivo</span>
+      </div>
+
+      <div class="sidebar-nav-title">Navegación del Sistema</div>
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-item active">
+          <a href="#sec-overview">
+            <span class="nav-icon">📊</span>
+            <span>Resumen & KPIs</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="#sec-controls">
+            <span class="nav-icon">🎮</span>
+            <span>Centro de Control</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="#sec-camera">
+            <span class="nav-icon">📹</span>
+            <span>Cámara en Vivo & IA</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="#sec-map">
+            <span class="nav-icon">🗺️</span>
+            <span>Mapa & Cerca Virtual</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="#sec-esp32">
+            <span class="nav-icon">🚦</span>
+            <span>Semáforo ESP32 IoT</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="#sec-analytics">
+            <span class="nav-icon">📈</span>
+            <span>Analítica de Tráfico</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="#sec-events">
+            <span class="nav-icon">📋</span>
+            <span>Eventos & Auditoría</span>
+          </a>
+        </li>
+      </ul>
+
+      <!-- Quick Action Shortcuts -->
+      <div class="sidebar-quick-actions">
+        <div class="sidebar-quick-title">Acciones Rápidas</div>
+        <button id="btnSidebarDemo" class="sidebar-quick-btn" type="button" title="Lanzar simulación demo">
+          <span>⚡</span>
+          <span>Modo Demo Offline</span>
+        </button>
+        <button id="btnSidebarPdf" class="sidebar-quick-btn" type="button" title="Generar informe diario">
+          <span>📑</span>
+          <span>Reporte PDF Diario</span>
+        </button>
+        <button id="btnSidebarQr" class="sidebar-quick-btn" type="button" title="Abrir visor para celulares">
+          <span>📱</span>
+          <span>Visor QR Móvil</span>
+        </button>
+      </div>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <div class="sidebar-clock">
+          <span>Hora Local:</span>
+          <span id="sidebarClockTime">--:--:--</span>
         </div>
-        <div class="card">
-          <h3>Control de Semáforo desde Dashboard</h3>
-          <div id="esp32SignalPill" class="risk-pill risk-medio">⚪ EN ESPERA</div>
-          <div id="esp32ConnectionMeta" style="margin-top:8px; color: var(--muted);">ESP32: sin conexión detectada</div>
-          <div id="esp32ButtonMeta" style="margin-top:8px; color: var(--muted);">Botón: sin datos</div>
-          <div id="esp32DecisionMeta" style="margin-top:6px; color: var(--muted);">Esperando eventos de botón y cámara.</div>
+        <button id="btnSidebarBackTop" class="sidebar-btn-back-top" type="button">
+          <span>▲</span>
+          <span>Volver al Inicio</span>
+        </button>
+      </div>
+    </aside>
 
-          <section class="esp32-panel" style="margin-top:10px;">
-            <article class="esp32-action-box" style="margin-top:0;">
-              <h4>Control directo ESP32 (por IP)</h4>
-              <div class="esp32-mini-note" id="esp32DirectHint">Si la ESP32 está online, se autocompleta su IP para abrir su web aquí.</div>
-              <div class="esp32-direct-row" style="margin-top:8px;">
-                <input id="esp32DirectHost" type="text" placeholder="Ejemplo: 192.168.2.120" />
-                <button id="btnEsp32OpenDirect" class="esp32-btn esp32-btn-neutral" type="button">Conectar</button>
-                <button id="btnEsp32ReloadEmbedded" class="esp32-btn esp32-btn-ok" type="button">Recargar panel</button>
-              </div>
-              <div class="esp32-mini-note" style="margin-top:8px;">
-                Enlace directo: <a id="esp32DirectLink" href="#" target="_blank" rel="noopener noreferrer">No conectado</a>
-              </div>
-              <iframe id="esp32DirectFrame" class="esp32-direct-frame" title="Panel ESP32 embebido"></iframe>
-            </article>
+    <!-- ====================================================================
+         MAIN VIEWPORT & CONTENT
+         ==================================================================== -->
+    <main class="app-main">
+      
+      <!-- Sticky App Top Bar -->
+      <header class="app-header">
+        <div class="header-left">
+          <button id="btnSidebarToggle" class="btn-sidebar-toggle" type="button" aria-label="Abrir menú de navegación">
+            ☰
+          </button>
+          <div class="header-breadcrumbs">
+            <span class="breadcrumb-location">Cartagena de Indias · Colombia</span>
+            <span class="breadcrumb-system">Corredor de Seguridad Vial Inteligente</span>
+          </div>
+        </div>
 
+        <div class="header-center">
+          <div class="awareness-pill-banner">
+            <span class="banner-icon">📢</span>
+            <span class="banner-text" id="ansvMessage">La vida del peatón es sagrada. Respeta la cebra, salva vidas.</span>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="header-live-badge">
+            <span class="status-dot-pulse"></span>
+            <span>CONECTADO</span>
+          </div>
+          <a href="/viewer.html?qr=1" target="_blank" class="header-viewer-link" title="Abrir Visor Ciudadano">
+            <span>📱 Visor QR</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- Main Container with Sections -->
+      <div class="container">
+
+        <!-- ================================================================
+             SECTION 1: RESUMEN GENERAL & KPIS (#sec-overview)
+             ================================================================ -->
+        <section id="sec-overview" class="section-block">
+          <div class="section-header-bar">
+            <div class="section-title-wrap">
+              <span class="section-title-icon">📊</span>
+              <div>
+                <h2 class="section-title">Resumen de Actores Viales & Nivel de Riesgo</h2>
+                <div class="section-subtitle">Detecciones y evaluación de proximidad en tiempo real</div>
+              </div>
+            </div>
+            <a href="#sec-overview" class="btn-section-back">↑ Volver</a>
+          </div>
+
+          <!-- KPI Cards Grid -->
+          <div class="grid grid-4" style="margin-bottom: 16px;">
+            <div class="kpi-card">
+              <div class="kpi-icon-wrapper kpi-icon-peaton">🚶</div>
+              <div class="kpi-body">
+                <span class="kpi-label">Peatones</span>
+                <span class="kpi-value" id="kpiPeaton">0</span>
+                <span class="kpi-subtext">Cruce en cebra</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-icon-wrapper kpi-icon-moto">🛵</div>
+              <div class="kpi-body">
+                <span class="kpi-label">Motocicletas</span>
+                <span class="kpi-value" id="kpiMoto">0</span>
+                <span class="kpi-subtext">Vehículos ligeros</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-icon-wrapper kpi-icon-auto">🚗</div>
+              <div class="kpi-body">
+                <span class="kpi-label">Automóviles</span>
+                <span class="kpi-value" id="kpiAuto">0</span>
+                <span class="kpi-subtext">Particulares / Ambulancias</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-icon-wrapper kpi-icon-bus">🚌</div>
+              <div class="kpi-body">
+                <span class="kpi-label">Buses BRT</span>
+                <span class="kpi-value" id="kpiBus">0</span>
+                <span class="kpi-subtext">Flota Transcaribe</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Real-Time Risk Assessment Pill Card -->
+          <div class="card" style="border-left: 4px solid var(--accent-cyan);">
+            <div class="card-title-row">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.2rem;">⚠️</span>
+                <h3 style="margin: 0;">Evaluación de Riesgo de Conflicto en Cebra</h3>
+              </div>
+              <span class="card-badge">Telemetría IA</span>
+            </div>
+            <div id="riskPill" class="risk-pill risk-bajo">🟢 BAJO - ZONA SEGURA</div>
+            <div id="riskDetails" style="margin-top: 10px; color: var(--text-secondary); font-size: 0.9rem; text-align: center;">
+              Sin eventos críticos recientes. Cebra despejada o paso con prioridad garantizada.
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 2: CENTRO DE CONTROL & CONEXIONES (#sec-controls)
+             ================================================================ -->
+        <section id="sec-controls" class="section-block">
+          <div class="section-header-bar">
+            <div class="section-title-wrap">
+              <span class="section-title-icon">🎮</span>
+              <div>
+                <h2 class="section-title">Centro de Mando & Control de Fuentes</h2>
+                <div class="section-subtitle">Gestión de cámaras, simulaciones y reportes operativos</div>
+              </div>
+            </div>
+            <a href="#sec-overview" class="btn-section-back">↑ Volver al inicio</a>
+          </div>
+
+          <div class="controls-station-grid">
+            
+            <!-- Grupo 1: Cámaras y Video IA -->
+            <div class="control-group-card">
+              <div class="control-group-header">
+                <span>📹</span>
+                <span>Fuentes de Video & Visión IA</span>
+              </div>
+              <div class="control-buttons-row">
+                <button id="btnStartCamera" class="btn-primary" type="button">
+                  <span>▶️</span> Abrir cámara PC (IA)
+                </button>
+                <button id="btnStopCamera" class="btn-outline" type="button">
+                  <span>⏹️</span> Detener cámara
+                </button>
+                <select id="cameraSelector" style="display:none;"></select>
+              </div>
+
+              <!-- DroidCam IP Connector -->
+              <div class="input-with-button-row">
+                <span style="font-size: 0.8rem; font-weight: 700; color: var(--accent-cyan); padding-left: 4px;">📱 Celular:</span>
+                <input id="droidCamIp" type="text" placeholder="IP DroidCam (ej: 192.168.1.50)" />
+                <button id="btnDroidCamConnect" class="btn-success" type="button">Conectar DroidCam</button>
+              </div>
+
+              <!-- VTA RTSP Camera Connector -->
+              <div class="input-with-button-row" style="background: rgba(30, 58, 138, 0.2); border-color: rgba(37, 99, 235, 0.4);">
+                <span style="font-size: 0.8rem; font-weight: 700; color: #60a5fa; padding-left: 4px;">📹 VTA RTSP:</span>
+                <input id="vtaRtspIp" type="text" placeholder="IP Cámara VTA" value="192.168.1.10" />
+                <button id="btnVtaRtspConnect" class="btn-primary" type="button">Conectar Cámara VTA</button>
+                <span id="vtaRtspStatusBadge" class="card-badge" style="background: #1e293b; color: #94a3b8;">Desconectado</span>
+              </div>
+            </div>
+
+            <!-- Grupo 2: Simulador y Pruebas -->
+            <div class="control-group-card">
+              <div class="control-group-header">
+                <span>⚡</span>
+                <span>Simulación & Demostración</span>
+              </div>
+              <div class="control-buttons-row">
+                <button id="btnSimulate" type="button">
+                  <span>🔄</span> Simular múltiples cámaras
+                </button>
+                <button id="btnOfflineMode" class="btn-outline" type="button">
+                  <span>💾</span> Modo Demo Offline
+                </button>
+                <button id="btnSimQR" type="button">
+                  <span>🔘</span> Simular QR (Tecla R)
+                </button>
+                <button id="btnShowQrLink" type="button">
+                  <span>🔗</span> Generar enlace QR red
+                </button>
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-top: 4px;">
+                💡 <em>Tip: Presiona la tecla <strong>R</strong> en tu teclado en cualquier momento para simular un cruce peatonal inmediato.</em>
+              </div>
+            </div>
+
+            <!-- Grupo 3: Reportes y Descargas -->
+            <div class="control-group-card">
+              <div class="control-group-header">
+                <span>📑</span>
+                <span>Auditoría & Descargas</span>
+              </div>
+              <div class="control-buttons-row">
+                <button id="btnCameraReport" type="button">
+                  <span>📷</span> Reporte detecciones cámara
+                </button>
+                <button id="btnCsv" class="btn-outline" type="button">
+                  <span>📊</span> Exportar CSV
+                </button>
+                <button id="btnPdf" class="btn-primary" type="button">
+                  <span>📑</span> Reporte PDF Diario
+                </button>
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-top: 4px;">
+                Descarga registros consolidados para planes de movilidad urbana de Cartagena.
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Dynamic QR Link Box (Rendered via JS) -->
+          <div id="qrLinkBox" class="card" style="margin-top: 14px; display: none;"></div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 3: CÁMARA EN VIVO & TELEMETRÍA DE IA (#sec-camera)
+             ================================================================ -->
+        <section id="sec-camera" class="section-block">
+          <div class="section-header-bar">
+            <div class="section-title-wrap">
+              <span class="section-title-icon">📹</span>
+              <div>
+                <h2 class="section-title">Monitor de Visión Computacional & Telemetría IA</h2>
+                <div class="section-subtitle">Transmisión de alta definición con bounding boxes YOLO e inferencia en vivo</div>
+              </div>
+            </div>
+            <a href="#sec-overview" class="btn-section-back">↑ Volver al inicio</a>
+          </div>
+
+          <!-- Camera Stream Frame -->
+          <div class="camera-wrap">
+            <!-- HUD Overlays -->
+            <div class="camera-hud-overlay">
+              <div class="camera-hud-top">
+                <div class="camera-hud-badge">
+                  <span class="status-dot-pulse"></span>
+                  <span style="font-weight: 800; letter-spacing: 0.05em;">EN VIVO</span>
+                  <span style="color: var(--text-muted);">|</span>
+                  <span style="font-weight: 600; color: #e2e8f0;">VTA-84920 ORBIT HD / PC</span>
+                </div>
+                <div class="camera-hud-badge" style="border-color: rgba(56, 189, 248, 0.4); color: var(--accent-cyan); font-weight: 700;">
+                  360p HD · YOLOv8
+                </div>
+              </div>
+            </div>
+
+            <!-- Video & Canvas Media Elements -->
+            <video id="cameraVideo" autoplay muted playsinline style="display:none;"></video>
+            <img id="cameraImgStream" alt="Transmisión de cámara" />
+            <canvas id="cameraCanvas"></canvas>
+          </div>
+
+          <!-- Camera Status & Engine Information Strip -->
+          <div class="camera-status-strip">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.1rem;">📷</span>
+              <span id="cameraStatus" style="font-weight: 700; color: var(--accent-cyan);">
+                Cámara VTA-84920 Conectada en Vivo (Tuya Smart HD)
+              </span>
+            </div>
+            <div id="visionRtStatus" style="color: var(--text-muted); font-size: 0.8rem;">
+              Motor de visión: iniciando...
+            </div>
+          </div>
+
+          <!-- Motion Tracking Control Strip -->
+          <div class="card" style="margin-top: 12px; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 1.5rem;">🎯</span>
+              <div>
+                <strong style="color: var(--accent-cyan); font-size: 0.95rem;">Seguimiento Automático de Movimiento (PTZ Motion Tracking)</strong>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Giro automático del lente motorizado al detectar peatones o vehículos en riesgo.</div>
+              </div>
+            </div>
+            <button id="btnToggleMotionTracking" class="btn-primary" type="button">
+              Activar Seguimiento
+            </button>
+          </div>
+
+          <!-- Real-Time Telemetry HUD -->
+          <div class="card" style="margin-top: 12px;">
+            <div class="card-title-row">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.1rem;">⚡</span>
+                <h4 style="margin: 0;">Telemetría de Visión por Computadora en Vivo</h4>
+              </div>
+              <span class="card-badge">HUD 10 FPS</span>
+            </div>
+
+            <div class="metrics-mini">
+              <div class="metric-mini">
+                <span class="label">Motor IA</span>
+                <span id="liveEngine" class="value">-</span>
+              </div>
+              <div class="metric-mini">
+                <span class="label">Riesgo</span>
+                <span id="liveRisk" class="value">-</span>
+              </div>
+              <div class="metric-mini">
+                <span class="label">Objetos</span>
+                <span id="liveObjCount" class="value">0</span>
+              </div>
+              <div class="metric-mini">
+                <span class="label">TTC (Colisión)</span>
+                <span id="liveTTC" class="value">-</span>
+              </div>
+              <div class="metric-mini">
+                <span class="label">PET (Espaciado)</span>
+                <span id="livePET" class="value">-</span>
+              </div>
+              <div class="metric-mini">
+                <span class="label">Velocidad Rel.</span>
+                <span id="liveVRel" class="value">-</span>
+              </div>
+              <div class="metric-mini">
+                <span class="label">Cartelera</span>
+                <span id="liveBillboard" class="value" style="color: var(--accent-cyan);">ACTIVA</span>
+              </div>
+            </div>
+
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin: 12px 0 6px;">Eventos Rápidos Detectados:</div>
+            <div id="liveBadges" class="badges-wrap"></div>
+          </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 4 & 5: MAPA TERRITORIAL + SEMÁFORO ESP32 (Row Layout)
+             ================================================================ -->
+        <div class="row-main-layout section-block">
+          
+          <!-- MAP SECTION (#sec-map) -->
+          <section id="sec-map" class="card" style="padding: 16px;">
+            <div class="section-header-bar" style="margin-bottom: 12px;">
+              <div class="section-title-wrap">
+                <span class="section-title-icon">🗺️</span>
+                <div>
+                  <h3 class="section-title" style="font-size: 1.05rem;">Mapa Geoespacial, Demografía & Cerca Virtual</h3>
+                  <div class="section-subtitle">Cartografía de vulnerabilidad urbana y cerca georreferenciada</div>
+                </div>
+              </div>
+              <a href="#sec-overview" class="btn-section-back">↑ Volver</a>
+            </div>
+            
+            <div id="map"></div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 10px; font-size: 0.75rem; color: var(--text-muted);">
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <span style="font-weight: 700; color: #fff;">Vulnerabilidad:</span>
+                <span>🟢 Baja (&lt;0.35)</span>
+                <span>🟡 Media (0.35-0.55)</span>
+                <span>🟠 Alta (0.55-0.75)</span>
+                <span>🔴 Crítica (&gt;0.75)</span>
+              </div>
+              <div>📍 Coordenadas: Cartagena D.T. y C.</div>
+            </div>
           </section>
 
-          <div style="display:none;">
-            <select id="esp32ManualOverrideState">
-              <option value="AUTO">AUTO</option>
-              <option value="GREEN">GREEN</option>
-              <option value="RED">RED</option>
-              <option value="GRAY">GRAY</option>
-            </select>
-            <input id="esp32RequestTtlMs" type="number" value="20000" />
-            <input id="esp32ButtonDebounceMs" type="number" value="140" />
-            <input id="esp32HoldGreenMs" type="number" value="900" />
-            <input id="esp32HoldRedMs" type="number" value="900" />
-            <input id="esp32HoldGrayMs" type="number" value="500" />
-            <input id="esp32HeartbeatTimeoutMs" type="number" value="12000" />
-            <button id="btnSaveEsp32Config" type="button">Guardar configuración ESP32</button>
+          <!-- ESP32 SMART SEMAPHORE & IOT SECTION (#sec-esp32) -->
+          <section id="sec-esp32" class="card" style="padding: 16px;">
+            <div class="section-header-bar" style="margin-bottom: 12px;">
+              <div class="section-title-wrap">
+                <span class="section-title-icon">🚦</span>
+                <div>
+                  <h3 class="section-title" style="font-size: 1.05rem;">Semáforo Físico ESP32 & IoT</h3>
+                  <div class="section-subtitle">Gemelo digital y control remoto del controlador de tráfico</div>
+                </div>
+              </div>
+              <a href="#sec-overview" class="btn-section-back">↑ Volver</a>
+            </div>
+
+            <!-- ESP32 Estado Principal -->
+            <div id="esp32SignalPill" class="risk-pill risk-medio">⚪ EN ESPERA / DESCONECTADO</div>
+
+            <!-- Metadatos de Diagnóstico ESP32 -->
+            <div style="background: rgba(9, 17, 33, 0.6); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); margin-top: 10px; font-size: 0.8rem; line-height: 1.5;">
+              <div id="esp32ConnectionMeta" style="color: var(--text-secondary); font-weight: 600;">ESP32: sin conexión detectada</div>
+              <div id="esp32ButtonMeta" style="color: var(--text-muted); margin-top: 2px;">Botón físico: sin datos</div>
+              <div id="esp32DecisionMeta" style="color: var(--text-muted); margin-top: 2px;">Esperando eventos de botón y cámara.</div>
+            </div>
+
+            <!-- Gemelo Digital: S1 (Peatón), S2 (Vehículo), Pulsador, Secuencia -->
+            <div class="esp32-twin-display">
+              <div class="esp32-signal-box">
+                <div class="signal-label">S1 Peatonal</div>
+                <div id="esp32WebS1" class="signal-val" style="color: var(--accent-green);">-</div>
+              </div>
+              <div class="esp32-signal-box">
+                <div class="signal-label">S2 Vehicular</div>
+                <div id="esp32WebS2" class="signal-val" style="color: var(--accent-red);">-</div>
+              </div>
+              <div class="esp32-signal-box">
+                <div class="signal-label">Pulsador</div>
+                <div id="esp32WebButton" class="signal-val" style="font-size: 0.9rem; color: var(--accent-cyan);">-</div>
+              </div>
+              <div class="esp32-signal-box">
+                <div class="signal-label">Secuencia</div>
+                <div id="esp32WebSequence" class="signal-val" style="font-size: 0.9rem; color: var(--accent-amber);">-</div>
+              </div>
+            </div>
+
+            <!-- Botones de Control Manual Semáforo -->
+            <div style="margin-top: 12px;">
+              <div style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px;">
+                Control Operativo de Fase:
+              </div>
+              <div class="control-buttons-row">
+                <button id="btnEsp32ModoNormal" class="btn-primary" type="button" style="flex: 1;">
+                  🔄 Modo Normal (AUTO)
+                </button>
+                <button id="btnEsp32Cruce" class="btn-success" type="button" style="flex: 1;">
+                  🚶 Solicitar Cruce Peatonal
+                </button>
+                <button id="btnEsp32Actualizar" class="btn-outline" type="button" title="Refrescar estado">
+                  🔄
+                </button>
+              </div>
+
+              <!-- Pruebas de Color Manual S1 / S2 -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+                <div>
+                  <div style="font-size: 0.72rem; color: var(--text-dim); margin-bottom: 4px; font-weight: 600;">S1 (Peatón):</div>
+                  <div style="display: flex; gap: 4px;">
+                    <button id="btnEsp32S1Rojo" class="btn-danger" type="button" style="padding: 4px 8px; font-size: 0.75rem; flex: 1;">Rojo</button>
+                    <button id="btnEsp32S1Amarillo" style="background: #d97706; color: #fff; padding: 4px 8px; font-size: 0.75rem; flex: 1;" type="button">Ama</button>
+                    <button id="btnEsp32S1Verde" class="btn-success" type="button" style="padding: 4px 8px; font-size: 0.75rem; flex: 1;">Verde</button>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size: 0.72rem; color: var(--text-dim); margin-bottom: 4px; font-weight: 600;">S2 (Vehículo):</div>
+                  <div style="display: flex; gap: 4px;">
+                    <button id="btnEsp32S2Rojo" class="btn-danger" type="button" style="padding: 4px 8px; font-size: 0.75rem; flex: 1;">Rojo</button>
+                    <button id="btnEsp32S2Amarillo" style="background: #d97706; color: #fff; padding: 4px 8px; font-size: 0.75rem; flex: 1;" type="button">Ama</button>
+                    <button id="btnEsp32S2Verde" class="btn-success" type="button" style="padding: 4px 8px; font-size: 0.75rem; flex: 1;">Verde</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Conexión Directa por IP al Servidor Embebido ESP32 -->
+            <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-subtle);">
+              <div style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-cyan); margin-bottom: 4px;">
+                Conexión Directa ESP32 (IP Local):
+              </div>
+              <div id="esp32DirectHint" style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 6px;">
+                Si la ESP32 está online en tu red WiFi, se autocompleta su IP para abrir su panel directo.
+              </div>
+              <div class="input-with-button-row">
+                <input id="esp32DirectHost" type="text" placeholder="Ejemplo: 192.168.2.120" />
+                <button id="btnEsp32OpenDirect" class="btn-outline" type="button">Conectar</button>
+                <button id="btnEsp32ReloadEmbedded" class="btn-primary" type="button">Recargar</button>
+              </div>
+              <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 6px;">
+                Enlace directo: <a id="esp32DirectLink" href="#" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan);">No conectado</a>
+              </div>
+              <iframe id="esp32DirectFrame" class="esp32-direct-frame" title="Panel ESP32 embebido"></iframe>
+            </div>
+
+            <!-- Hidden Configuration Inputs for Script Compatibility -->
+            <div style="display:none;">
+              <select id="esp32ManualOverrideState">
+                <option value="AUTO">AUTO</option>
+                <option value="GREEN">GREEN</option>
+                <option value="RED">RED</option>
+                <option value="GRAY">GRAY</option>
+              </select>
+              <input id="esp32RequestTtlMs" type="number" value="20000" />
+              <input id="esp32ButtonDebounceMs" type="number" value="140" />
+              <input id="esp32HoldGreenMs" type="number" value="900" />
+              <input id="esp32HoldRedMs" type="number" value="900" />
+              <input id="esp32HoldGrayMs" type="number" value="500" />
+              <input id="esp32HeartbeatTimeoutMs" type="number" value="12000" />
+              <button id="btnSaveEsp32Config" type="button">Guardar configuración ESP32</button>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- ================================================================
+             SECTION 6: ANALÍTICA DE TRÁFICO (#sec-analytics)
+             ================================================================ -->
+        <section id="sec-analytics" class="section-block">
+          <div class="section-header-bar">
+            <div class="section-title-wrap">
+              <span class="section-title-icon">📈</span>
+              <div>
+                <h2 class="section-title">Analítica de Tráfico & Proporciones Vehiculares</h2>
+                <div class="section-subtitle">Series de tiempo por hora y distribución modal de transporte</div>
+              </div>
+            </div>
+            <a href="#sec-overview" class="btn-section-back">↑ Volver al inicio</a>
           </div>
-        </div>
-        <div class="card">
-          <h3>Tendencia por Hora</h3>
-          <canvas id="hourlyChart" height="180"></canvas>
-        </div>
-        <div class="card">
-          <h3>Tipos Vehiculares</h3>
-          <canvas id="vehicleChart" height="180"></canvas>
-          <div class="table-wrap" style="margin-top:10px; max-height:220px;">
-            <table class="table" id="vehicleTable">
-              <thead>
-                <tr>
-                  <th>Tipo</th>
-                  <th class="num">Activos</th>
-                  <th class="num">%</th>
-                </tr>
-              </thead>
-              <tbody id="vehicleTableBody"></tbody>
-            </table>
+
+          <div class="grid grid-2">
+            
+            <!-- Hourly Trend Chart -->
+            <div class="card">
+              <div class="card-title-row">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 1.1rem;">⏱️</span>
+                  <h4 style="margin: 0;">Tendencia de Tráfico por Hora</h4>
+                </div>
+                <span class="card-badge">Histórico 24h</span>
+              </div>
+              <div style="position: relative; height: 220px; width: 100%;">
+                <canvas id="hourlyChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Vehicle Types Chart & Table -->
+            <div class="card">
+              <div class="card-title-row">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 1.1rem;">🚘</span>
+                  <h4 style="margin: 0;">Distribución de Tipos Vehiculares</h4>
+                </div>
+                <span class="card-badge">Composición</span>
+              </div>
+              <div style="position: relative; height: 160px; width: 100%;">
+                <canvas id="vehicleChart"></canvas>
+              </div>
+
+              <!-- Vehicle Table -->
+              <div class="table-wrap" style="margin-top: 12px; max-height: 180px;">
+                <table class="table" id="vehicleTable">
+                  <thead>
+                    <tr>
+                      <th>Tipo de Actor</th>
+                      <th class="num">Activos</th>
+                      <th class="num">Porcentaje</th>
+                    </tr>
+                  </thead>
+                  <tbody id="vehicleTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
-        </div>
-        <div class="card">
-          <h3>Eventos Recientes</h3>
-          <div id="eventList" class="list"></div>
-        </div>
-        <div class="card">
-          <h3>Clases YOLO (conteo)</h3>
-          <div id="modelCounts" class="list"></div>
-        </div>
-        <div class="card">
-          <h3>Objetos en seguimiento</h3>
-          <div id="objectsLiveList" class="list"></div>
-        </div>
-        <div class="card">
-          <h3>Dispositivos conectados</h3>
-          <div id="devicesCount" style="margin-bottom:8px; color: var(--muted);">0 conectados</div>
-          <div id="devicesList" class="list"></div>
-        </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 7: REGISTRO DE EVENTOS & DIAGNÓSTICO (#sec-events)
+             ================================================================ -->
+        <section id="sec-events" class="section-block">
+          <div class="section-header-bar">
+            <div class="section-title-wrap">
+              <span class="section-title-icon">📋</span>
+              <div>
+                <h2 class="section-title">Registro de Eventos, Detecciones & Dispositivos</h2>
+                <div class="section-subtitle">Trazabilidad operativa de inferencias y clientes conectados</div>
+              </div>
+            </div>
+            <a href="#sec-overview" class="btn-section-back">↑ Volver al inicio</a>
+          </div>
+
+          <div class="grid grid-4">
+            
+            <!-- Eventos Recientes -->
+            <div class="card">
+              <div class="card-title-row">
+                <h4 style="font-size: 0.95rem;">Eventos Recientes</h4>
+                <span>⚡</span>
+              </div>
+              <div id="eventList" class="list"></div>
+            </div>
+
+            <!-- Clases YOLO (Conteo) -->
+            <div class="card">
+              <div class="card-title-row">
+                <h4 style="font-size: 0.95rem;">Clases YOLO (Conteo)</h4>
+                <span>🏷️</span>
+              </div>
+              <div id="modelCounts" class="list"></div>
+            </div>
+
+            <!-- Objetos en Seguimiento -->
+            <div class="card">
+              <div class="card-title-row">
+                <h4 style="font-size: 0.95rem;">Objetos en Seguimiento</h4>
+                <span>🎯</span>
+              </div>
+              <div id="objectsLiveList" class="list"></div>
+            </div>
+
+            <!-- Dispositivos Conectados -->
+            <div class="card">
+              <div class="card-title-row">
+                <h4 style="font-size: 0.95rem;">Dispositivos en Red</h4>
+                <span>📡</span>
+              </div>
+              <div id="devicesCount" style="margin-bottom: 6px; font-size: 0.8rem; color: var(--accent-cyan); font-weight: 700;">
+                0 conectados
+              </div>
+              <div id="devicesList" class="list"></div>
+            </div>
+
+          </div>
+        </section>
+
       </div>
-    </div>
+
+      <!-- App Footer -->
+      <footer class="app-footer">
+        <div class="footer-content">
+          <div>
+            <strong>SafeCrossing AI</strong> · Plataforma Integral de Seguridad Vial Inteligente bajo enfoque <em>Visión Cero</em>.
+            <div style="font-size: 0.74rem; color: var(--text-dim); margin-top: 4px;">
+              Cartagena D.T. y C. · Todos los derechos reservados · Integración YOLOv8, RTSP, ESP32 y Leaflet.
+            </div>
+          </div>
+          <div class="footer-links">
+            <a href="/viewer.html?qr=1" target="_blank">Visor Ciudadano</a>
+            <a href="#sec-overview">Volver Arriba ↑</a>
+          </div>
+        </div>
+      </footer>
+
+    </main>
   </div>
 
+  <!-- Floating "Volver Arriba" (Back to Top) Action Button -->
+  <button id="btnBackToTop" class="btn-floating-back-top" type="button" aria-label="Volver arriba">
+    <span>▲</span>
+    <span>Volver</span>
+  </button>
+
+  <!-- Scripts -->
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
@@ -187,5 +743,6 @@
   <script src="js/map-adapter.js"></script>
   <script src="js/map.js"></script>
   <script src="js/dashboard.js"></script>
+  <script src="js/app-shell.js"></script>
 </body>
 </html>

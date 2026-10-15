@@ -3,49 +3,174 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Visor Ciudadano - Seguridad Vial</title>
+  <meta name="theme-color" content="#070c18" />
+  <title>Visor Ciudadano - Seguridad Vial Inteligente | Visión Cero</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #0b1220; color: #e2e8f0; font-family: Segoe UI, Arial, sans-serif; }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #070c18;
+      color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+    }
     #map { width: 100%; height: 100%; }
+    
     .overlay {
       position: fixed;
-      top: 10px;
-      left: 10px;
-      right: 10px;
+      top: 14px;
+      left: 14px;
+      right: 14px;
       z-index: 1000;
       pointer-events: none;
+      max-width: 440px;
     }
+    
     .card {
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      border-radius: 10px;
-      padding: 10px 12px;
+      background: rgba(13, 22, 41, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 16px;
+      padding: 16px;
       pointer-events: auto;
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
-    .title { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
-    .meta { font-size: 0.85rem; color: #cbd5e1; }
-    .risk { margin-top: 6px; font-size: 0.85rem; }
-    .actions { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
-    .actions button {
-      background: #0ea5e9;
+
+    .card-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .brand-tag {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    .title {
+      font-weight: 800;
+      font-size: 1.05rem;
       color: #fff;
-      border: none;
+      letter-spacing: -0.01em;
+      margin: 0;
+    }
+
+    .meta {
+      font-size: 0.82rem;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+
+    .risk {
+      margin-top: 4px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      padding: 8px 12px;
       border-radius: 8px;
-      padding: 7px 10px;
-      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+    }
+
+    .actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .actions button {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: #fff;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .actions button:hover {
+      background: linear-gradient(135deg, #0ea5e9, #0284c7);
+      transform: translateY(-1px);
+    }
+
+    .btn-back-dashboard {
+      background: rgba(255, 255, 255, 0.06);
+      color: #cbd5e1;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-back-dashboard:hover {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.4);
     }
   </style>
 </head>
 <body>
   <div class="overlay">
     <div class="card">
-      <div class="title">Visor de Riesgo Cercano</div>
-      <div id="status" class="meta">Inicializando ubicación y mapa...</div>
-      <div id="riskInfo" class="risk">Sin eventos cercanos.</div>
+      <div class="card-header-row">
+        <div class="brand-tag">
+          <span class="pulse-dot"></span>
+          <span>Visión Cero · Móvil</span>
+        </div>
+        <a href="/" class="btn-back-dashboard" title="Regresar al panel de control">
+          <span>⬅</span>
+          <span>Dashboard</span>
+        </a>
+      </div>
+
+      <div class="title">Visor Ciudadano de Riesgo Cercano</div>
+      <div id="status" class="meta">Inicializando geolocalización y mapa...</div>
+      <div id="riskInfo" class="risk">Sin eventos críticos cercanos.</div>
+
       <div class="actions">
-        <button id="btnRequestLocation">Usar mi ubicación</button>
+        <button id="btnRequestLocation">
+          <span>📍</span>
+          <span>Usar mi ubicación</span>
+        </button>
       </div>
     </div>
   </div>
