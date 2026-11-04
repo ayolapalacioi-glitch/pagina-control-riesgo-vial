@@ -38,7 +38,7 @@ Capacidades principales
 
 5) Estado para IoT (ESP32)
 - Endpoint de estado simplificado para consumo en microcontrolador.
-- Logica de semaforizacion visual en la web de la ESP32:
+- Logica de senalizacion visual en la web de la ESP32:
   - Verde: hay peaton detectado.
   - Rojo: no hay peaton, pero si vehiculo detectado.
   - Gris: no hay deteccion relevante.

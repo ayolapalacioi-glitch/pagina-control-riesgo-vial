@@ -7,7 +7,7 @@ const char* SSID = "@PHICOMM_7C";
 const char* PASS = "12345678";
 const char* HOSTNAME = "esp32-vial";
 
-// --- PINES DEL SEMAFORO ---
+// --- PINES DE SEÑALIZACIÓN (Balizas e Indicadores) ---
 const int R1 = 25; // Vehicular 1 Rojo
 const int Y1 = 5; // Vehicular 1 Amarillo
 const int G1 = 17; // Vehicular 1 Verde
@@ -215,7 +215,7 @@ void handleRoot() {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Control Semaforo ESP32</title>
+  <title>Control Senalizacion ESP32</title>
   <style>
     :root {
       --bg1: #0d1b2a;
@@ -350,7 +350,7 @@ void handleRoot() {
 </head>
 <body>
   <main class="panel">
-    <h1>Control de Semaforo desde ESP32</h1>
+    <h1>Control de Senalizacion desde ESP32</h1>
 
     <section class="status">
       <article class="status-card">

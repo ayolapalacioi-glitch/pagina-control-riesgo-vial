@@ -195,15 +195,19 @@ class VisionService:
             return [], None, None
 
         h_orig, w_orig = image_bgr.shape[:2]
+        scale_x = 1.0
+        scale_y = 1.0
         if w_orig > 640:
             target_w = 640
             target_h = int(h_orig * (640.0 / w_orig))
+            scale_x = float(w_orig) / float(target_w)
+            scale_y = float(h_orig) / float(target_h)
             image_bgr = cv2.resize(image_bgr, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
 
         # Inferencia ultrarrápida a 5ms reduciendo tamaño interno a 320px
         results = self.model.predict(image_bgr, imgsz=320, conf=self.config.conf_threshold, verbose=False)
         if not results:
-            return [], self.fast_encode(image_bgr)
+            return [], self.fast_encode(image_bgr), None
 
         result = results[0]
         names = result.names
@@ -246,7 +250,12 @@ class VisionService:
                     "track_id": None,
                     "class_name": mapped,
                     "confidence": conf,
-                    "bbox": {"x": float(xyxy[0]), "y": float(xyxy[1]), "width": max(1.0, float(xyxy[2] - xyxy[0])), "height": max(1.0, float(xyxy[3] - xyxy[1]))},
+                    "bbox": {
+                        "x": float(xyxy[0]) * scale_x,
+                        "y": float(xyxy[1]) * scale_y,
+                        "width": max(1.0, float(xyxy[2] - xyxy[0]) * scale_x),
+                        "height": max(1.0, float(xyxy[3] - xyxy[1]) * scale_y),
+                    },
                 }
             )
 

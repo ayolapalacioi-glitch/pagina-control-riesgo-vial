@@ -418,3 +418,34 @@ map.on('click', (event) => {
     emitFence(true, 'manual_location');
   }
 });
+
+
+// --- Stream en vivo de la cámara con detecciones IA ---
+const viewerCanvas = document.getElementById('viewerCameraCanvas');
+const viewerPlaceholder = document.getElementById('viewerCameraPlaceholder');
+const viewerCanvasCtx = viewerCanvas ? viewerCanvas.getContext('2d') : null;
+let isViewerDecoding = false;
+
+socket.on('rtsp_frame_update', (data) => {
+  if (!data || !data.image_annotated_base64 || !viewerCanvas || isViewerDecoding) return;
+  isViewerDecoding = true;
+  const img = new Image();
+  img.onload = () => {
+    try {
+      if (viewerCanvas.width !== img.width || viewerCanvas.height !== img.height) {
+        viewerCanvas.width = img.width;
+        viewerCanvas.height = img.height;
+      }
+      if (viewerCanvasCtx) {
+        viewerCanvasCtx.drawImage(img, 0, 0);
+      }
+      if (viewerPlaceholder && viewerPlaceholder.style.display !== 'none') {
+        viewerPlaceholder.style.display = 'none';
+      }
+    } finally {
+      isViewerDecoding = false;
+    }
+  };
+  img.onerror = () => { isViewerDecoding = false; };
+  img.src = data.image_annotated_base64;
+});

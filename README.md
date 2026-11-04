@@ -19,9 +19,9 @@ Sistema edge-to-cloud para reducir mortalidad de peatones en pasos de cebra bajo
 - Pipeline de cámara PC migrado a inferencia backend: el cliente envía frames y el servidor Python ejecuta YOLO en tiempo real.
 - Detección de eventos enriquecidos en backend: `ambulancia`, `movimiento_peaton`, `senal_paso` y clases vehiculares/peatonales de operación vial.
 - Gestión de dispositivos conectados en tiempo real con identificación, tipo de cliente y ubicación GPS.
-- Señal de presencia peatonal/vehicular para integración con semáforo/luz ESP32 (`/esp32/light` y `/api/esp32/person-status`).
+- Señal de presencia peatonal/vehicular para integración con dispositivo de señalización activa/luz ESP32 (`/esp32/light` y `/api/esp32/person-status`).
 - Integración directa con ESP32 por heartbeat + polling con detección online/offline en dashboard.
-- Configuración remota del semáforo ESP32 desde la web: TTL de solicitud, debounce backend, tiempos hold (`GREEN/RED/GRAY`) y modo manual (`AUTO/GREEN/RED/GRAY`).
+- Configuración remota de la señalización activa ESP32 desde la web: TTL de solicitud, debounce backend, tiempos hold (`GREEN/RED/GRAY`) y modo manual (`AUTO/GREEN/RED/GRAY`).
 - Arranque seguro para demo móvil con túnel HTTPS de Cloudflare y publicación automática de URL pública para QR.
 - Integración de Cámara WiFi/IP VTA-84920 (Tuya Smart Life): soporte para streaming RTSP continuo a 30 FPS con proxy ultrarrápido `go2rtc`, endpoint MJPEG nativo (`/api/camera/stream.mjpg`) y WebSockets.
 - Soporte de Motion Tracking PTZ vía Tuya Cloud API para seguimiento motorizado de peatones/vehículos.
@@ -68,9 +68,9 @@ Librerías cargadas en dashboard y visor (`frontend/index.html`, `frontend/viewe
 - `POST /api/esp32/button`: recibe pulsación del botón peatonal ESP32 y sincroniza la decisión con cámara/riesgo.
 - `POST /api/esp32/heartbeat`: latido de conexión de la ESP32 para monitoreo online/offline.
 - `GET /api/esp32/runtime`: estado consolidado para dashboard (`signal + connection + config`).
-- `POST /api/esp32/config`: actualiza parámetros de control del semáforo desde la web.
-- `GET /esp32/light`: página semáforo web (verde/rojo/gris) con auto-refresh para ESP32/pantalla simple.
-- Estados de semáforo: `GREEN` (persona detectada), `RED` (solo vehiculo detectado), `GRAY` (sin deteccion).
+- `POST /api/esp32/config`: actualiza parámetros de control de señalización desde la web.
+- `GET /esp32/light`: página de señalización web (verde/rojo/gris) con auto-refresh para ESP32/pantalla simple.
+- Estados de señalización: `GREEN` (persona detectada), `RED` (solo vehiculo detectado), `GRAY` (sin deteccion).
 - Ingesta MQTT opcional: consume tópico configurado y procesa pipeline completo igual que HTTP.
 - Tracking temporal: estimación de velocidad, heading a cebra, cruce en zona y trayectoria predicha 1-5s.
 - Evaluación de riesgo: combina factores de contexto vial + TTC/PET + predicción futura de conflicto.
@@ -196,7 +196,7 @@ Para que la placa no falle al consultar estado y mostrar luces, alinea estos val
 Si cambias de red WiFi, actualiza `LAN_IP` y `BACKEND_HOST` antes de volver a subir el firmware.
 El pin sugerido para el botón en ESP32 es `GPIO18` (configurable en `arduino/esp32_person_status_web.ino`).
 
-### Control web del semáforo ESP32
+### Control web de la señalización activa ESP32
 
 En el dashboard, tarjeta **Control ESP32 Peatonal**:
 
@@ -527,7 +527,7 @@ Genera frames sintéticos en el archivo de muestra de detecciones dentro de `dat
 
 - Homografía calibrada por cámara para velocidad métrica real.
 - Filtro de Kalman robusto y re-identificación multi-cámara.
-- Integración con paneles VMS y semáforos inteligentes.
+- Integración con paneles VMS y dispositivos de señalización inteligentes.
 - Analítica espacial avanzada (kernel density + priorización de intervención).
 
 ---

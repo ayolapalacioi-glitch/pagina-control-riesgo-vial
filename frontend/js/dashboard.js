@@ -76,9 +76,6 @@ const cameraVideo = document.getElementById('cameraVideo');
 const cameraImgStream = document.getElementById('cameraImgStream');
 const droidCamIpInput = document.getElementById('droidCamIp');
 const btnDroidCamConnect = document.getElementById('btnDroidCamConnect');
-const vtaRtspIpInput = document.getElementById('vtaRtspIp');
-const btnVtaRtspConnect = document.getElementById('btnVtaRtspConnect');
-const vtaRtspStatusBadge = document.getElementById('vtaRtspStatusBadge');
 const cameraCanvas = document.getElementById('cameraCanvas');
 const cameraStatus = document.getElementById('cameraStatus');
 const visionRtStatus = document.getElementById('visionRtStatus');
@@ -196,11 +193,12 @@ function resizeCanvasToDisplay() {
 }
 
 function getVideoToCanvasTransform() {
-  const videoW = Math.max(1, cameraVideo.videoWidth || 1);
-  const videoH = Math.max(1, cameraVideo.videoHeight || 1);
+  const streamEl = getStreamElement();
+  const videoW = Math.max(1, streamEl.videoWidth || streamEl.naturalWidth || 1);
+  const videoH = Math.max(1, streamEl.videoHeight || streamEl.naturalHeight || 1);
   const canvasW = Math.max(1, cameraCanvas.width || 1);
   const canvasH = Math.max(1, cameraCanvas.height || 1);
-  const scale = Math.max(canvasW / videoW, canvasH / videoH);
+  const scale = Math.min(canvasW / videoW, canvasH / videoH);
   const offsetX = (canvasW - videoW * scale) / 2;
   const offsetY = (canvasH - videoH * scale) / 2;
   return { videoW, videoH, scale, offsetX, offsetY };
@@ -349,7 +347,7 @@ function esp32SignalView(state) {
   return map[state] || map.GRAY;
 }
 
-function mapRuntimeSignalToSemaforos(state) {
+function mapRuntimeSignalToIndicators(state) {
   if (state === 'GREEN') {
     return { s1: 'GREEN', s2: 'RED' };
   }
@@ -365,7 +363,7 @@ function updateEsp32DashboardPanel(payload) {
   const state = payload.state || 'GRAY';
   const buttonPressed = !!payload.buttonPressed;
   const requestActive = !!payload.requestActive;
-  const pair = mapRuntimeSignalToSemaforos(state);
+  const pair = mapRuntimeSignalToIndicators(state);
 
   if (esp32WebS1) esp32WebS1.textContent = pair.s1;
   if (esp32WebS2) esp32WebS2.textContent = pair.s2;
@@ -971,29 +969,17 @@ async function inferFrame() {
     }
     renderTracksList(tracks);
     
-    if (result.image_annotated_base64) {
-      const img = new Image();
-      img.onload = () => {
-        resizeCanvasToDisplay();
-        cameraCtx.clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
-        const transform = getVideoToCanvasTransform();
-        cameraCtx.drawImage(
-          img,
-          transform.offsetX,
-          transform.offsetY,
-          transform.videoW * transform.scale,
-          transform.videoH * transform.scale
-        );
-        cameraVideo.style.opacity = '0';
-        cameraImgStream.style.opacity = '1';
-        drawTracks(tracks, result.crosswalk, true);
-      };
-      img.src = result.image_annotated_base64;
+    resizeCanvasToDisplay();
+    cameraCtx.clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
+    if (isImg) {
+      cameraVideo.style.display = 'none';
+      cameraImgStream.style.display = 'block';
     } else {
+      cameraVideo.style.display = 'block';
       cameraVideo.style.opacity = '1';
-      cameraImgStream.style.opacity = '1';
-      drawTracks(tracks, result.crosswalk, false);
+      cameraImgStream.style.display = 'none';
     }
+    drawTracks(tracks, result.crosswalk, false);
 
     if (window.updateMapFromSnapshot && snapshot) {
       window.updateMapFromSnapshot(snapshot);
@@ -1028,73 +1014,137 @@ function processLoop() {
 
 async function startCameraMode(preferredDeviceId = null) {
   ensureSecureContext();
-  await detectLocation();
+  detectLocation().catch(() => null);
 
-  cameraStatus.textContent = 'Iniciando detección de cámaras...';
-  
+  cameraStatus.textContent = 'Iniciando cámara...';
+  cameraStatus.style.color = '#38bdf8';
+
   try {
-    // Patrón "Double-Take": Primero pedimos permiso genérico para que el navegador nos dé los LABELS (nombres)
-    if (!preferredDeviceId) {
-      const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      initialStream.getTracks().forEach(t => t.stop());
-    }
-
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(d => d.kind === 'videoinput');
-    
-    // Poblar selector de camaras (ahora con nombres reales)
-    if (cameraSelector) {
-      cameraSelector.style.display = 'inline-block';
-      cameraSelector.innerHTML = videoDevices
-        .map(d => `<option value="${d.deviceId}" ${d.deviceId === preferredDeviceId ? 'selected' : ''}>${d.label || 'Cámara Desconocida'}</option>`)
-        .join('');
-    }
-
     let targetDeviceId = preferredDeviceId;
-    
-    if (!targetDeviceId) {
-      console.log('Dispositivos detectados con nombres:', videoDevices);
-      // Prioridad 1: DroidCam Source 3 (que es la principal de video, la 2 suele ser verde)
-      const droidCam3 = videoDevices.find(d => d.label.toLowerCase().includes('droidcam') && d.label.toLowerCase().includes('source 3'));
-      const anyDroidCam = videoDevices.find(d => d.label.toLowerCase().includes('droidcam') && !d.label.toLowerCase().includes('source 2'));
-      const externalCam = videoDevices.find(d => !d.label.toLowerCase().includes('integrated') && !d.label.toLowerCase().includes('virtual'));
 
-      if (droidCam3) {
-        targetDeviceId = droidCam3.deviceId;
-        addRealtimeBadge('DroidCam Source 3 detectada');
-      } else if (anyDroidCam) {
-        targetDeviceId = anyDroidCam.deviceId;
-        addRealtimeBadge('DroidCam detectada');
-      } else if (externalCam) {
-        targetDeviceId = externalCam.deviceId;
-      } else if (videoDevices.length > 0) {
-        targetDeviceId = videoDevices[0].deviceId;
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(d => d.kind === 'videoinput');
+      if (cameraSelector && videoDevices.length > 0 && videoDevices[0].label) {
+        cameraSelector.style.display = 'inline-block';
+        cameraSelector.innerHTML = videoDevices
+          .map(d => `<option value="${d.deviceId}" ${d.deviceId === preferredDeviceId ? 'selected' : ''}>${d.label || 'Cámara'}</option>`)
+          .join('');
       }
+    } catch (e) {
+      console.warn('Enumeración de dispositivos:', e);
     }
 
     const constraints = {
-      video: targetDeviceId 
-        ? { deviceId: { exact: targetDeviceId } } 
-        : { facingMode: 'environment' },
+      video: targetDeviceId ? { deviceId: { exact: targetDeviceId } } : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     };
 
     if (cameraStream) {
       cameraStream.getTracks().forEach(t => t.stop());
+      cameraStream = null;
     }
 
-    cameraStatus.textContent = 'Conectando a la cámara seleccionada...';
-    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    cameraStatus.textContent = 'Conectando a la cámara del PC...';
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (err) {
+      console.warn('Fallo con constraints estrictos, reintentando genérico:', err);
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    }
 
     cameraVideo.srcObject = cameraStream;
+    cameraVideo.style.display = 'block';
+    cameraVideo.style.opacity = '1';
+    cameraImgStream.style.display = 'none';
+    cameraCanvas.style.display = 'block';
+    cameraCanvas.style.opacity = '1';
+
     await cameraVideo.play();
 
+    resizeCanvasToDisplay();
+    cameraCtx.clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
+
     isRunning = true;
+    cameraStatus.textContent = '🟢 Cámara PC en Vivo (IA Activa)';
+    cameraStatus.style.color = '#38bdf8';
     requestAnimationFrame(processLoop);
   } catch (error) {
     console.error('Error al iniciar camara:', error);
     cameraStatus.textContent = `Error: ${error.message}. Asegúrate de dar permisos de cámara.`;
+    cameraStatus.style.color = '#ef4444';
   }
+}
+
+async function startRpiCameraMode(host = null) {
+  stopCameraMode();
+  detectLocation().catch(() => null);
+
+  const rpiInput = document.getElementById('rpiHostInput');
+  const targetHost = host || (rpiInput ? rpiInput.value.trim() : '') || '192.168.1.12';
+  const cleanHost = targetHost.replace(/^https?:\/\//, '').replace(/:\d+.*$/, '');
+
+  // Si estamos en contexto HTTPS o en localhost, usar proxy backend para evitar Mixed Content y tainted canvas
+  const isHttps = window.location.protocol === 'https:';
+  const proxyUrl = `${API_BASE}/camera/rpi/stream.mjpg?host=${encodeURIComponent(cleanHost)}`;
+  const directUrl = `http://${cleanHost}:8000/video`;
+  const streamUrl = isHttps ? proxyUrl : directUrl;
+
+  cameraStatus.textContent = `🍓 Conectando a Cámara Raspberry Pi (${cleanHost}:8000)...`;
+  cameraStatus.style.color = '#38bdf8';
+  
+  const rpiBadge = document.getElementById('rpiStatusBadge');
+  if (rpiBadge) {
+    rpiBadge.textContent = '🟡 Conectando...';
+    rpiBadge.style.background = '#a16207';
+    rpiBadge.style.color = '#ffffff';
+  }
+
+  cameraVideo.style.display = 'none';
+  cameraImgStream.style.display = 'block';
+  cameraImgStream.style.opacity = '1';
+  cameraCanvas.style.display = 'block';
+  cameraCanvas.style.opacity = '1';
+
+  resizeCanvasToDisplay();
+  cameraCtx.clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
+
+  cameraImgStream.crossOrigin = "anonymous";
+  cameraImgStream.src = streamUrl;
+
+  let streamReady = false;
+
+  cameraImgStream.onload = () => {
+    if (streamReady) return;
+    streamReady = true;
+    addRealtimeBadge('🍓 Cámara Raspberry Pi Conectada');
+    cameraStatus.textContent = '🍓 Cámara Raspberry Pi Transmitiendo en Vivo (Hailo-8 Edge AI · 26 TOPS)';
+    cameraStatus.style.color = '#38bdf8';
+    if (rpiBadge) {
+      rpiBadge.textContent = '🟢 En Vivo (30 FPS)';
+      rpiBadge.style.background = '#15803d';
+      rpiBadge.style.color = '#ffffff';
+    }
+    isRunning = true;
+    requestAnimationFrame(processLoop);
+  };
+
+  cameraImgStream.onerror = () => {
+    // Si fallo directo, reintentar automaticamente por proxy backend
+    if (cameraImgStream.src !== proxyUrl) {
+      console.warn('Fallo stream directo, reintentando por proxy backend...');
+      cameraImgStream.src = proxyUrl;
+      return;
+    }
+    cameraStatus.textContent = `Error: no se pudo cargar el stream de la Raspberry Pi (${cleanHost}). Verifica que la Raspberry Pi esté encendida en la red.`;
+    cameraStatus.style.color = '#ef4444';
+    if (rpiBadge) {
+      rpiBadge.textContent = '🔴 Sin Señal';
+      rpiBadge.style.background = '#b91c1c';
+      rpiBadge.style.color = '#ffffff';
+    }
+    stopCameraMode();
+  };
 }
 
 async function startDroidCamIpMode(ip) {
@@ -1141,7 +1191,8 @@ function stopCameraMode() {
   cameraImgStream.src = '';
   
   cameraCtx.clearRect(0, 0, cameraCanvas.width, cameraCanvas.height);
-  cameraStatus.textContent = 'Camara apagada.';
+  drawStandbyCanvas();
+  cameraStatus.textContent = '⏹️ Cámara apagada. Pulsa "Abrir cámara PC (IA)" para iniciar.';
 }
 
 function wireUi() {
@@ -1149,6 +1200,15 @@ function wireUi() {
 
   document.getElementById('btnOfflineMode').addEventListener('click', async () => {
     await fetch(`${API_BASE}/simulate/offline`, { method: 'POST' });
+  });
+
+  document.getElementById('btnStartRpiCamera')?.addEventListener('click', () => {
+    startRpiCameraMode();
+  });
+
+  document.getElementById('btnRpiConnectManual')?.addEventListener('click', () => {
+    const host = document.getElementById('rpiHostInput')?.value?.trim() || '';
+    startRpiCameraMode(host);
   });
 
   document.getElementById('btnStartCamera').addEventListener('click', () => {
@@ -1248,9 +1308,35 @@ function wireUi() {
   });
 }
 
+function drawStandbyCanvas() {
+  if (!cameraCanvas) return;
+  resizeCanvasToDisplay();
+  const ctx = cameraCanvas.getContext('2d');
+  if (!ctx) return;
+  const w = cameraCanvas.width || 640;
+  const h = cameraCanvas.height || 360;
+  ctx.fillStyle = '#0b1329';
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(16, 16, Math.max(10, w - 32), Math.max(10, h - 32));
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 15px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('SAFE-CROSSING · VISIÓN VIAL INTELIGENTE', w / 2, Math.max(30, h / 2 - 12));
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '13px sans-serif';
+  ctx.fillText('Cámara en reposo · Pulsa "Abrir cámara PC (IA)" para iniciar', w / 2, Math.max(50, h / 2 + 16));
+}
 socket.on('connect', () => {
-  visionRtStatus.textContent = `Socket conectado en ${window.location.host}.`;
-  socket.emit('device_hello', { displayName: 'Dashboard Web', kind: 'dashboard' });
+  if (cameraStatus && !isRunning) {
+    cameraStatus.textContent = '🟢 Conectado al servidor (Socket.IO). Cámara en reposo.';
+    cameraStatus.style.color = '#38bdf8';
+    setTimeout(drawStandbyCanvas, 100);
+  }
 });
 
 socket.on('disconnect', () => {
@@ -1382,12 +1468,6 @@ function renderCanvasFrame(b64Data) {
   img.src = b64Data.startsWith('data:') ? b64Data : 'data:image/jpeg;base64,' + b64Data;
 }
 
-socket.on('connect', () => {
-  if (cameraStatus) {
-    cameraStatus.textContent = '📹 Cámara VTA Transmitiendo en Vivo (Conectado Socket.IO)';
-    cameraStatus.style.color = '#38bdf8';
-  }
-});
 
 socket.on('disconnect', () => {
   if (cameraStatus) {
@@ -1399,13 +1479,16 @@ socket.on('disconnect', () => {
 socket.on('rtsp_frame_update', (data) => {
   if (!data) return;
 
+  // Si la cámara local del PC está activa, no sobreescribir la pantalla
+  if (isRunning && cameraStream) return;
+
   if (data.image_annotated_base64) {
     renderCanvasFrame(data.image_annotated_base64);
   }
 
   if (cameraStatus) {
     const count = Array.isArray(data.tracks) ? data.tracks.length : 0;
-    cameraStatus.textContent = `📹 Cámara VTA Transmitiendo en Vivo (${data.cameraId || 'vta_camera_001'}) | Velocidad: ${currentStreamFps} FPS | Objetos: ${count}`;
+    cameraStatus.textContent = `🍓 Cámara Raspberry Pi Transmitiendo en Vivo (${data.cameraId || 'rpi_cam_001'}) | Velocidad: ${currentStreamFps} FPS | Objetos: ${count}`;
     cameraStatus.style.color = '#38bdf8';
   }
   if (data.tracks) {
@@ -1413,100 +1496,10 @@ socket.on('rtsp_frame_update', (data) => {
   }
 });
 
-async function checkRtspStatus() {
-  try {
-    const res = await fetch(`${API_BASE}/camera/rtsp/status`);
-    if (!res.ok) return;
-    const statusData = await res.json();
-    if (!vtaRtspStatusBadge) return;
 
-    if (statusData.status === 'CONNECTED') {
-      vtaRtspStatusBadge.textContent = `🟢 Conectado (${statusData.fps} FPS)`;
-      vtaRtspStatusBadge.style.background = '#15803d';
-      vtaRtspStatusBadge.style.color = '#ffffff';
-    } else if (statusData.status === 'CONNECTING' || statusData.status === 'RECONNECTING') {
-      vtaRtspStatusBadge.textContent = '🟡 Conectando...';
-      vtaRtspStatusBadge.style.background = '#a16207';
-      vtaRtspStatusBadge.style.color = '#ffffff';
-    } else if (statusData.status === 'ERROR') {
-      vtaRtspStatusBadge.textContent = '🔴 Sin señal IP';
-      vtaRtspStatusBadge.style.background = '#b91c1c';
-      vtaRtspStatusBadge.style.color = '#ffffff';
-    } else {
-      vtaRtspStatusBadge.textContent = '⚪ Desconectado';
-      vtaRtspStatusBadge.style.background = '#334155';
-      vtaRtspStatusBadge.style.color = '#94a3b8';
-    }
 
-    if (statusData.ip && vtaRtspIpInput && document.activeElement !== vtaRtspIpInput) {
-      vtaRtspIpInput.value = statusData.ip;
-    }
-  } catch (err) {
-    // Ignorar fallos de red puntuales
-  }
-}
-
-if (btnVtaRtspConnect) {
-  btnVtaRtspConnect.addEventListener('click', async () => {
-    const ip = vtaRtspIpInput ? vtaRtspIpInput.value.trim() : '';
-    if (!ip) {
-      alert('Por favor ingresa la dirección IP local de tu cámara VTA');
-      return;
-    }
-    btnVtaRtspConnect.disabled = true;
-    btnVtaRtspConnect.textContent = 'Conectando...';
-    try {
-      const res = await fetch(`${API_BASE}/camera/rtsp/config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ip, enabled: true })
-      });
-      const resData = await res.json();
-      checkRtspStatus();
-    } catch (e) {
-      alert('Error de conexión con el backend: ' + e.message);
-    } finally {
-      btnVtaRtspConnect.disabled = false;
-      btnVtaRtspConnect.textContent = 'Conectar Cámara VTA';
-    }
-  });
-}
-
-const btnToggleMotionTracking = document.getElementById('btnToggleMotionTracking');
-let isMotionTrackingActive = false;
-
-if (btnToggleMotionTracking) {
-  btnToggleMotionTracking.addEventListener('click', async () => {
-    isMotionTrackingActive = !isMotionTrackingActive;
-    btnToggleMotionTracking.disabled = true;
-    btnToggleMotionTracking.textContent = isMotionTrackingActive ? 'Enviando orden...' : 'Desactivando...';
-    try {
-      const res = await fetch(`${API_BASE}/camera/motion-tracking`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: isMotionTrackingActive })
-      });
-      const data = await res.json();
-      if (data.success) {
-        btnToggleMotionTracking.textContent = isMotionTrackingActive ? '🎯 Seguimiento Activo (Click para Desactivar)' : 'Activar Seguimiento';
-        btnToggleMotionTracking.style.background = isMotionTrackingActive ? '#10b981' : '#0284c7';
-      } else {
-        alert('No se pudo cambiar el modo de seguimiento de movimiento.');
-        isMotionTrackingActive = !isMotionTrackingActive;
-      }
-    } catch (e) {
-      alert('Error de conexión: ' + e.message);
-      isMotionTrackingActive = !isMotionTrackingActive;
-    } finally {
-      btnToggleMotionTracking.disabled = false;
-    }
-  });
-}
-
-setInterval(checkRtspStatus, 2500);
-checkRtspStatus();
-
-cameraStatus.textContent = 'Listo. Sistema preparado para recibir flujo de cámara VTA o cámara local.';
+cameraStatus.textContent = '🟢 Sistema listo. Pulsa "Abrir cámara PC (IA)" para iniciar la transmisión.';
+  setTimeout(drawStandbyCanvas, 200);
 liveEngine.textContent = 'YOLO Backend';
 visionRtStatus.textContent = 'Motor de visión en backend Python (YOLO).';
 

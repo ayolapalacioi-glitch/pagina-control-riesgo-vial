@@ -20,7 +20,7 @@ const unsigned long BUTTON_DEBOUNCE_MS = 45;
 const unsigned long BUTTON_HEARTBEAT_MS = 7000;
 const unsigned long DEVICE_HEARTBEAT_MS = 5000;
 
-// --- PINES SEMAFOROS ---
+// --- PINES DE SEÑALIZACIÓN (Balizas e Indicadores Luminosos) ---
 // Peatonal
 const int PIN_PED_GREEN = 21;
 const int PIN_PED_RED = 19;
@@ -354,7 +354,7 @@ void setup() {
   WiFi.mode(WIFI_STA);
   pinMode(BUTTON_PIN, BUTTON_ACTIVE_LOW ? INPUT_PULLUP : INPUT_PULLDOWN);
 
-  // Inicializar pines de semáforos
+  // Inicializar pines de señalización activa
   pinMode(PIN_PED_GREEN, OUTPUT);
   pinMode(PIN_PED_RED, OUTPUT);
   pinMode(PIN_VEH1_GREEN, OUTPUT);

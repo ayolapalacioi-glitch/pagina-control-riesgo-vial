@@ -513,7 +513,8 @@ async def vision_infer(request: VisionInferRequest) -> VisionInferResponse:
     except Exception as ex:
         raise HTTPException(status_code=400, detail=str(ex)) from ex
 
-    detections, image_annotated_base64 = vision_service.infer(image_bgr)
+    infer_res = vision_service.infer(image_bgr)
+    detections, image_annotated_base64 = infer_res[0], infer_res[1]
 
     # Logica de prueba: Detectar la cartelera (cruce peatonal) dinamicamente
     dynamic_crosswalk = None
@@ -580,6 +581,16 @@ async def vision_infer(request: VisionInferRequest) -> VisionInferResponse:
         },
     )
     await sio.emit("objects_update", envelope)
+    if image_annotated_base64:
+        await sio.emit(
+            "rtsp_frame_update",
+            {
+                "cameraId": request.camera_id,
+                "timestamp": timestamp,
+                "image_annotated_base64": image_annotated_base64,
+                "tracks": tracks_ui,
+            },
+        )
 
     return VisionInferResponse(
         ok=True,
@@ -802,7 +813,7 @@ def _get_reconnecting_mjpeg_bytes() -> bytes:
             img = np.zeros((360, 640, 3), dtype=np.uint8)
             img[:] = (20, 24, 30)
             cv2.circle(img, (50, 180), 12, (0, 255, 0), -1)
-            cv2.putText(img, "VTA-84920 ORBIT (Tuya Smart Life)", (80, 186), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(img, "Raspberry Pi 5 + Hailo-8 (CSI Camera)", (80, 186), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
             cv2.putText(img, "Estableciendo enlace HD en vivo...", (80, 220), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 180), 1, cv2.LINE_AA)
             _, buf = cv2.imencode('.jpg', img)
             _placeholder_cache = buf.tobytes()
@@ -813,7 +824,7 @@ def _get_reconnecting_mjpeg_bytes() -> bytes:
 
 @api.get("/camera/stream.mjpg")
 async def mjpeg_stream():
-    """Flujo de video MJPEG nativo directo estilo Tuya Smart Life con autoreconexión continua."""
+    """Flujo de video MJPEG nativo de la Raspberry Pi."""
     async def frame_generator():
         try:
             while True:
@@ -831,6 +842,43 @@ async def mjpeg_stream():
         frame_generator(),
         media_type="multipart/x-mixed-replace; boundary=frame"
     )
+
+
+@api.get("/camera/rpi/stream.mjpg")
+def rpi_mjpeg_proxy(host: str = "192.168.1.12"):
+    """Proxy HTTP MJPEG de la cámara Raspberry Pi 5 + Hailo-8 para compatibilidad HTTPS y CORS."""
+    import requests
+    clean_host = host.replace("http://", "").replace("https://", "").split(":")[0].strip() or "192.168.1.12"
+    target_url = f"http://{clean_host}:8000/video"
+
+    def stream_gen():
+        try:
+            with requests.get(target_url, stream=True, timeout=5) as r:
+                for chunk in r.iter_content(chunk_size=16384):
+                    if chunk:
+                        yield chunk
+        except Exception:
+            return
+
+    return StreamingResponse(
+        stream_gen(),
+        media_type="multipart/x-mixed-replace; boundary=FRAME"
+    )
+
+
+@api.get("/camera/rpi/status")
+def rpi_status(host: str = "192.168.1.12"):
+    """Consulta el estado del streamer Hailo-8 en la Raspberry Pi."""
+    import requests
+    clean_host = host.replace("http://", "").replace("https://", "").split(":")[0].strip() or "192.168.1.12"
+    target_url = f"http://{clean_host}:8000/health"
+    try:
+        r = requests.get(target_url, timeout=2.5)
+        if r.status_code == 200:
+            return r.json()
+        return {"status": "error", "code": r.status_code}
+    except Exception as e:
+        return {"status": "offline", "error": str(e)}
 
 
 @api.post("/camera/rtsp/config")
@@ -936,6 +984,16 @@ async def state_update(sid, payload):
 async def objects_update(sid, payload):
     envelope = {"source": sid, "timestamp": now_iso(), **(payload or {})}
     await sio.emit("objects_update", envelope)
+    if image_annotated_base64:
+        await sio.emit(
+            "rtsp_frame_update",
+            {
+                "cameraId": request.camera_id,
+                "timestamp": timestamp,
+                "image_annotated_base64": image_annotated_base64,
+                "tracks": tracks_ui,
+            },
+        )
 
 
 @sio.on("device_hello")
@@ -1083,6 +1141,16 @@ async def process_rtsp_frame_payload(payload: FramePayload, source: str, image_a
             },
         )
         await sio.emit("objects_update", envelope)
+    if image_annotated_base64:
+        await sio.emit(
+            "rtsp_frame_update",
+            {
+                "cameraId": request.camera_id,
+                "timestamp": timestamp,
+                "image_annotated_base64": image_annotated_base64,
+                "tracks": tracks_ui,
+            },
+        )
 
 
 mqtt_bridge = MqttBridge(MQTT_BROKER_URL, MQTT_TOPIC, USE_MQTT, _mqtt_handler)
