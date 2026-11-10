@@ -1,4 +1,51 @@
-const socket = io(window.location.origin);
+const isVercel = window.location.hostname.includes('vercel.app');
+const SUPABASE_CONFIG = {
+  url: 'https://astuizgaounxijvtelkz.supabase.co',
+  anonKey: 'sb_publishable_tWEPmSY_LAgu7wnPbBrd7w_QeXdrHTy'
+};
+
+const socket = io(window.location.origin, {
+  autoConnect: !isVercel,
+  reconnection: !isVercel,
+  reconnectionAttempts: 5,
+  timeout: 10000
+});
+
+async function syncViewerFromSupabase() {
+  try {
+    const res = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/active_signaling_state?id=eq.1&select=*`, {
+      headers: {
+        apikey: SUPABASE_CONFIG.anonKey,
+        Authorization: `Bearer ${SUPABASE_CONFIG.anonKey}`
+      }
+    });
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (Array.isArray(rows) && rows.length > 0) {
+      const state = rows[0];
+      const color = state.indicator_color || 'GRIS';
+      const at = timeLabel(state.last_update || new Date().toISOString());
+
+      if (color === 'VERDE') {
+        riskInfoEl.textContent = `🟢 ${at} · Peatón en zona de cruce. Señalización Activa Inteligente encendida.`;
+        setStatus('Modo Cloud: Cruce peatonal con prioridad activa.');
+      } else if (color === 'ROJO') {
+        riskInfoEl.textContent = `🟡 ${at} · Vehículo aproximándose a cruce. Precaución vial.`;
+        setStatus('Modo Cloud: Tráfico vehicular aproximándose.');
+      } else {
+        riskInfoEl.textContent = `⚪ ${at} · Zona de cruce despejada. Monitoreo continuo.`;
+        setStatus('Modo Cloud: Sistema en vigilancia preventiva.');
+      }
+    }
+  } catch (e) {
+    console.warn('Error en syncViewerFromSupabase:', e);
+  }
+}
+
+if (isVercel) {
+  syncViewerFromSupabase();
+  setInterval(syncViewerFromSupabase, 4000);
+}
 const DEFAULT_GPS = { lat: 10.4236, lng: -75.5457 };
 const FENCE_RADIUS_METERS = 50;
 const RISK_NEARBY_RADIUS_METERS = 450;

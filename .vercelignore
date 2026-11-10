@@ -1,0 +1,14 @@
+backend_py/
+arduino/
+certs/
+data/
+docs/
+scripts/
+vision-rt/
+.tmp/
+*.pt
+*.png
+*.py
+*.ps1
+docker-compose.yml
+go2rtc.yaml

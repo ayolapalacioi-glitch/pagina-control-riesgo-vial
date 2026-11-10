@@ -1,10 +1,17 @@
 const API_BASE = `${window.location.origin}/api`;
+const isVercel = window.location.hostname.includes('vercel.app');
+const SUPABASE_CONFIG = {
+  url: 'https://astuizgaounxijvtelkz.supabase.co',
+  anonKey: 'sb_publishable_tWEPmSY_LAgu7wnPbBrd7w_QeXdrHTy'
+};
+
 const socket = io(window.location.origin, {
-  reconnection: true,
-  reconnectionAttempts: Infinity,
+  autoConnect: !isVercel,
+  reconnection: !isVercel,
+  reconnectionAttempts: 5,
   reconnectionDelay: 500,
   reconnectionDelayMax: 2000,
-  timeout: 20000,
+  timeout: 10000,
   transports: ['websocket', 'polling'],
 });
 
@@ -481,7 +488,83 @@ async function setEsp32NormalModeFromPanel() {
   await clearEsp32PedestrianRequest();
 }
 
+async function fetchSupabaseEvents() {
+  try {
+    const res = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/near_miss_events?select=*&order=timestamp.desc&limit=25`, {
+      headers: {
+        apikey: SUPABASE_CONFIG.anonKey,
+        Authorization: `Bearer ${SUPABASE_CONFIG.anonKey}`
+      }
+    });
+    if (!res.ok) return;
+    const events = await res.json();
+    if (!Array.isArray(events) || events.length === 0) return;
+
+    if (isVercel || eventList.children.length === 0) {
+      eventList.innerHTML = '';
+      events.forEach((evt) => {
+        const timeStr = evt.timestamp ? new Date(evt.timestamp).toLocaleTimeString() : 'Reciente';
+        const risk = evt.risk_level || 'MEDIO';
+        const cam = evt.camera_id || 'cam-vta-rtsp';
+        const ttc = evt.ttc_seconds ? ` | TTC: ${Number(evt.ttc_seconds).toFixed(2)}s` : '';
+        pushEventLine(`${timeStr} | [${risk}] ${cam}${ttc}`);
+      });
+    }
+
+    const latest = events[0];
+    if (latest && riskPill && isVercel) {
+      const risk = latest.risk_level || 'BAJO';
+      riskPill.className = `risk-pill risk-${risk.toLowerCase()}`;
+      riskPill.textContent = `⚡ ${risk} - REGISTRADO EN SUPABASE`;
+      const riskDetails = document.getElementById('riskDetails');
+      if (riskDetails && latest.ttc_seconds) {
+        riskDetails.textContent = `Último evento en cruce: TTC ${Number(latest.ttc_seconds).toFixed(2)}s · ${new Date(latest.timestamp).toLocaleTimeString()}`;
+      }
+    }
+  } catch (err) {
+    console.warn('Error sincronizando eventos desde Supabase:', err);
+  }
+}
+
+async function fetchSupabaseSignalingState() {
+  try {
+    const res = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/active_signaling_state?id=eq.1&select=*`, {
+      headers: {
+        apikey: SUPABASE_CONFIG.anonKey,
+        Authorization: `Bearer ${SUPABASE_CONFIG.anonKey}`
+      }
+    });
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (Array.isArray(rows) && rows.length > 0) {
+      const st = rows[0];
+      const color = st.indicator_color || 'GRIS';
+      const label = st.status_label || 'ESPERA';
+
+      const espPill = document.getElementById('esp32State');
+      if (espPill) {
+        espPill.textContent = `${label} (${color})`;
+      }
+      if (typeof renderEsp32Signal === 'function') {
+        renderEsp32Signal({
+          state: color,
+          decisionReason: `Cloud Supabase (${label})`,
+          buttonPressed: false,
+          requestActive: st.pedestrian_detected || false
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Error leyendo señalización activa desde Supabase:', err);
+  }
+}
+
 async function refreshEsp32Runtime() {
+  if (isVercel) {
+    await fetchSupabaseSignalingState();
+    return;
+  }
+
   const response = await fetch(`${API_BASE}/esp32/runtime`);
   if (!response.ok) {
     throw new Error(`No se pudo consultar runtime ESP32 (${response.status})`);
@@ -1410,15 +1493,25 @@ wireUi();
 detectLocation().catch(() => null);
 startLocationWatch();
 renderQrLinks().catch(() => null);
-fetch(`${API_BASE}/esp32/runtime`).then((res) => res.json()).then((payload) => {
-  if (payload?.signal) renderEsp32Signal(payload.signal);
-  if (payload?.connection) renderEsp32Connection(payload.connection);
-  if (payload?.config) applyEsp32ConfigToForm(payload.config);
-}).catch(() => null);
+if (isVercel) {
+  const statusBanner = document.querySelector('.sidebar-status-banner span:last-child');
+  if (statusBanner) statusBanner.textContent = 'Modo Cloud · Supabase Conectado';
+  fetchSupabaseEvents().catch(() => null);
+  fetchSupabaseSignalingState().catch(() => null);
+  setInterval(() => {
+    fetchSupabaseEvents().catch(() => null);
+  }, 7000);
+} else {
+  fetch(`${API_BASE}/esp32/runtime`).then((res) => res.json()).then((payload) => {
+    if (payload?.signal) renderEsp32Signal(payload.signal);
+    if (payload?.connection) renderEsp32Connection(payload.connection);
+    if (payload?.config) applyEsp32ConfigToForm(payload.config);
+  }).catch(() => null);
+}
 
 setInterval(() => {
   refreshEsp32Runtime().catch(() => null);
-}, 1000);
+}, 1500);
 
 let pendingB64 = null;
 let isDecodingFrame = false;
