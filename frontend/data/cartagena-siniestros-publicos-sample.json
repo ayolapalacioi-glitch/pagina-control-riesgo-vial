@@ -1,0 +1,56 @@
+[
+  {
+    "id": "sin-ctg-001",
+    "source": "Observatorio vial abierto - muestra consolidada",
+    "date": "2025-10-05",
+    "lat": 10.4232,
+    "lng": -75.5451,
+    "severity": "grave",
+    "road_user": "peaton"
+  },
+  {
+    "id": "sin-ctg-002",
+    "source": "Observatorio vial abierto - muestra consolidada",
+    "date": "2025-11-14",
+    "lat": 10.4218,
+    "lng": -75.548,
+    "severity": "leve",
+    "road_user": "motociclista"
+  },
+  {
+    "id": "sin-ctg-003",
+    "source": "Observatorio vial abierto - muestra consolidada",
+    "date": "2025-12-01",
+    "lat": 10.4176,
+    "lng": -75.5524,
+    "severity": "mortal",
+    "road_user": "peaton"
+  },
+  {
+    "id": "sin-ctg-004",
+    "source": "Observatorio vial abierto - muestra consolidada",
+    "date": "2026-01-09",
+    "lat": 10.429,
+    "lng": -75.5269,
+    "severity": "grave",
+    "road_user": "ciclista"
+  },
+  {
+    "id": "sin-ctg-005",
+    "source": "Observatorio vial abierto - muestra consolidada",
+    "date": "2026-01-22",
+    "lat": 10.4322,
+    "lng": -75.5284,
+    "severity": "grave",
+    "road_user": "peaton"
+  },
+  {
+    "id": "sin-ctg-006",
+    "source": "Observatorio vial abierto - muestra consolidada",
+    "date": "2026-02-08",
+    "lat": 10.4149,
+    "lng": -75.5382,
+    "severity": "leve",
+    "road_user": "conductor"
+  }
+]

@@ -931,6 +931,12 @@ async def viewer_html() -> FileResponse:
     return FileResponse(FRONTEND_DIR / "viewer.html")
 
 
+@app.get("/presentacion.html")
+@app.get("/ponencia")
+async def presentacion_html() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "presentacion.html")
+
+
 @app.get("/")
 async def root() -> FileResponse:
     return FileResponse(FRONTEND_DIR / "index.html")

@@ -22,7 +22,7 @@ Si la cámara ya está conectada al router en la IP predeterminada (`192.168.1.7
 
 1. **Abre PowerShell en la raíz del proyecto:**
    ```powershell
-   cd C:\Users\ayola\OneDrive\Desktop\Proyectos\Proyectoxspoiler\proyecto-seguridad-vial
+   cd C:\Users\ayola\OneDrive\Desktop\SAFE-CROSSIN\proyecto-seguridad-vial
    ```
 2. **Inicia los servicios con el script automatizado:**
    ```powershell

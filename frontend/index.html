@@ -24,10 +24,12 @@
          ==================================================================== -->
     <aside id="appSidebar" class="app-sidebar" aria-label="Menú lateral de navegación">
       <div class="sidebar-brand">
-        <div class="brand-icon-box">🚸</div>
+        <div class="brand-icon-box" style="background:#ffffff;padding:4px 8px;border-radius:8px;display:flex;align-items:center;">
+          <img src="assets/logo-unicolombo.png" onerror="this.onerror=null;this.src='../logo unicolombo.png';" alt="UNICOLOMBO" style="height:22px;width:auto;display:block;" />
+        </div>
         <div class="brand-text-wrap">
           <span class="brand-title">SafeCrossing</span>
-          <span class="brand-subtitle">Visión Cero · AI</span>
+          <span class="brand-subtitle">Semillero UNICOLOMBO</span>
         </div>
       </div>
 
@@ -85,6 +87,10 @@
       <!-- Quick Action Shortcuts -->
       <div class="sidebar-quick-actions">
         <div class="sidebar-quick-title">Acciones Rápidas</div>
+        <a href="presentacion.html" class="sidebar-quick-btn" style="text-decoration:none;background:linear-gradient(135deg,#004b93,#1d4ed8);color:#fff;border-color:rgba(96,165,250,0.5);" title="Abrir Landing Keynote de la Ponencia">
+          <span>🎙️</span>
+          <span>Landing Ponencia Keynote</span>
+        </a>
         <button id="btnSidebarDemo" class="sidebar-quick-btn" type="button" title="Lanzar simulación demo">
           <span>⚡</span>
           <span>Modo Demo Offline</span>
@@ -124,8 +130,8 @@
             ☰
           </button>
           <div class="header-breadcrumbs">
-            <span class="breadcrumb-location">Cartagena de Indias · Colombia</span>
-            <span class="breadcrumb-system">Corredor de Seguridad Vial Inteligente</span>
+            <span class="breadcrumb-location">UNICOLOMBO · Cartagena de Indias</span>
+            <span class="breadcrumb-system">Corredor de Seguridad Vial Inteligente · Cuatro Vientos</span>
           </div>
         </div>
 
@@ -137,11 +143,14 @@
         </div>
 
         <div class="header-right">
+          <a href="presentacion.html" class="header-viewer-link" style="background:rgba(0,75,147,0.35);border-color:rgba(59,130,246,0.55);color:#93c5fd;" title="Ir a la Presentación Keynote del Semillero">
+            <span>🎙️ Modo Ponencia</span>
+          </a>
           <div class="header-live-badge">
             <span class="status-dot-pulse"></span>
             <span>CONECTADO</span>
           </div>
-          <a href="/viewer.html?qr=1" target="_blank" class="header-viewer-link" title="Abrir Visor Ciudadano">
+          <a href="viewer.html?qr=1" target="_blank" class="header-viewer-link" title="Abrir Visor Ciudadano">
             <span>📱 Visor QR</span>
           </a>
         </div>
@@ -453,6 +462,30 @@
                 <span>🔴 Crítica (&gt;0.75)</span>
               </div>
               <div>📍 Coordenadas: Cartagena D.T. y C.</div>
+            </div>
+
+            <!-- PROSPECCIÓN COMERCIAL: ENTORNOS ESCOLARES Y UNIVERSITARIOS -->
+            <div style="margin-top: 14px; padding: 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 1.1rem;">🎓</span>
+                  <span style="font-size: 0.85rem; font-weight: 700; color: #38bdf8;">Colegios & Universidades Clientes SIPVA (Cruces Críticos)</span>
+                </div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <button type="button" onclick="window.filterEducationalMarkers('all')" class="btn-filter-edu active">Todos (16)</button>
+                  <button type="button" onclick="window.filterEducationalMarkers('Colegio Público')" class="btn-filter-edu">Colegios Públicos</button>
+                  <button type="button" onclick="window.filterEducationalMarkers('SENA')" class="btn-filter-edu">SENA</button>
+                  <button type="button" onclick="window.filterEducationalMarkers('Universidad')" class="btn-filter-edu">Universidades</button>
+                </div>
+              </div>
+              <div id="eduDirectoryContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto; padding-right: 4px;">
+                <!-- Auto-poblado por map.js -->
+              </div>
+
+              <!-- DESGLOSE DETALLADO DE LA INSTITUCIÓN AL PRESIONAR CUALQUIER GLOBO DEL MAPA -->
+              <div id="institucionDesglosePanel" style="margin-top: 14px; padding: 14px; background: rgba(15, 23, 42, 0.95); border: 1.5px solid #0284c7; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);">
+                <!-- Se actualiza dinámicamente al presionar un globo en el mapa -->
+              </div>
             </div>
           </section>
 

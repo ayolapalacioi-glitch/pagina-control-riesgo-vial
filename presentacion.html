@@ -1,0 +1,2780 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#050811" />
+  <title>AI-SafeCrossing — Keynote Oficial | Semillero UNICOLOMBO</title>
+
+  <!-- Tipografía de Ingeniería y Keynote -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-stage: #050811;
+      --bg-elevated: #0b1222;
+      --bg-panel: rgba(13, 21, 38, 0.82);
+      --bg-glass: rgba(9, 14, 26, 0.92);
+      --border-subtle: rgba(148, 163, 184, 0.16);
+      --border-highlight: rgba(56, 189, 248, 0.42);
+
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+
+      --unicolombo-blue: #004b93;
+      --unicolombo-glow: #2563eb;
+      --unicolombo-red: #e30613;
+
+      --signal-safe: #10b981;
+      --signal-amber: #f59e0b;
+      --signal-critical: #ef4444;
+      --signal-cyan: #06b6d4;
+
+      --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --sidebar-width: 270px;
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg-stage);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg-stage);
+      background-image:
+        radial-gradient(circle at 55% 0%, rgba(0, 75, 147, 0.25), transparent 45%),
+        radial-gradient(circle at 88% 25%, rgba(16, 185, 129, 0.09), transparent 35%),
+        radial-gradient(circle at 20% 65%, rgba(37, 99, 235, 0.10), transparent 40%),
+        linear-gradient(180deg, #050811 0%, #070d1b 50%, #050811 100%);
+      overflow-x: hidden;
+    }
+
+    /* Subtle Technical Optical Grid */
+    .optical-grid {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-size: 56px 56px;
+      background-image:
+        linear-gradient(to right, rgba(148, 163, 184, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
+      mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.92) 25%, transparent 85%);
+    }
+
+    /* ==========================================================================
+       LATERAL SIDEBAR NAVIGATION MENU
+       ========================================================================== */
+    .keynote-layout {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    .keynote-sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: var(--sidebar-width);
+      background: rgba(6, 10, 20, 0.94);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      border-right: 1px solid var(--border-subtle);
+      padding: 1.5rem 1.15rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      z-index: 120;
+      transition: transform 0.28s ease;
+    }
+
+    .sidebar-top {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .unicolombo-badge {
+      background: #ffffff;
+      padding: 8px 16px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 20px rgba(0, 75, 147, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      width: 100%;
+      margin-bottom: 0.95rem;
+    }
+
+    .unicolombo-badge img {
+      height: 34px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    .sidebar-project-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--signal-safe);
+      box-shadow: 0 0 12px var(--signal-safe);
+      display: inline-block;
+      animation: pulseDot 2s infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.35); opacity: 0.65; }
+    }
+
+    .sidebar-project-sub {
+      font-family: var(--font-mono);
+      font-size: 0.71rem;
+      color: #93c5fd;
+      margin-bottom: 1.4rem;
+      padding-bottom: 1.1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      width: 100%;
+    }
+
+    .sidebar-nav-label {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+      margin-bottom: 0.6rem;
+      text-align: center;
+      width: 100%;
+    }
+
+    .sidebar-nav-list {
+      list-style: none;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .sidebar-nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.68rem 0.9rem;
+      border-radius: 11px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar-nav-link:hover,
+    .sidebar-nav-link.active {
+      color: var(--text-primary);
+      background: rgba(37, 99, 235, 0.2);
+      border-color: rgba(59, 130, 246, 0.45);
+    }
+
+    .nav-act-num {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: #60a5fa;
+      background: rgba(15, 23, 42, 0.9);
+      padding: 0.15rem 0.45rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .sidebar-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .btn-keynote {
+      font-family: var(--font-sans);
+      font-size: 0.84rem;
+      font-weight: 600;
+      padding: 0.68rem 1rem;
+      border-radius: 11px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      border: 1px solid var(--border-subtle);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-primary);
+      width: 100%;
+    }
+
+    .btn-keynote:hover {
+      border-color: var(--border-highlight);
+      transform: translateY(-1px);
+    }
+
+    .btn-keynote.btn-teleprompter.active {
+      background: rgba(245, 158, 11, 0.2);
+      border-color: rgba(245, 158, 11, 0.6);
+      color: #fde68a;
+    }
+
+    .btn-keynote.btn-primary-cta {
+      background: linear-gradient(135deg, #004b93 0%, #1d4ed8 100%);
+      border-color: rgba(96, 165, 250, 0.5);
+      box-shadow: 0 6px 20px rgba(29, 78, 216, 0.32);
+    }
+
+    .btn-keynote.btn-primary-cta:hover {
+      box-shadow: 0 8px 26px rgba(37, 99, 235, 0.52);
+    }
+
+    /* Mobile Drawer Toggle Button */
+    .mobile-menu-trigger {
+      display: none;
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 150;
+      background: rgba(11, 18, 34, 0.92);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      padding: 0.55rem 0.85rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ==========================================================================
+       MAIN STAGE & CENTERED KEYNOTE SECTIONS
+       ========================================================================== */
+    main {
+      flex: 1;
+      margin-left: var(--sidebar-width);
+      width: calc(100% - var(--sidebar-width));
+    }
+
+    .stage-section {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: clamp(3.5rem, 6vw, 5.5rem) clamp(1.25rem, 3vw, 2.5rem);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .section-header-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 840px;
+      margin: 0 auto 2.75rem;
+    }
+
+    .speaker-cue-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      padding: 0.4rem 1.05rem;
+      border-radius: 999px;
+      background: rgba(0, 75, 147, 0.28);
+      border: 1px solid rgba(59, 130, 246, 0.42);
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: #93c5fd;
+      margin-bottom: 1rem;
+    }
+
+    .speaker-cue-pill strong {
+      color: #ffffff;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.95rem, 3.5vw, 3rem);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.95rem;
+      text-align: center;
+    }
+
+    .section-lead {
+      font-size: clamp(1rem, 1.25vw, 1.15rem);
+      color: var(--text-secondary);
+      max-width: 66ch;
+      text-align: center;
+    }
+
+    /* ==========================================================================
+       HERO SECTION — DIRECT, CLEAN OPENING WITH NOTHING INVASIVE ABOVE HEADLINE
+       ========================================================================== */
+    .hero-stage {
+      padding-top: clamp(2.75rem, 5vw, 4.25rem);
+      padding-bottom: clamp(3.25rem, 5vw, 4.75rem);
+    }
+
+    .hero-headline {
+      font-family: var(--font-display);
+      font-size: clamp(2.5rem, 4.8vw, 4.2rem);
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: -0.035em;
+      max-width: 19ch;
+      margin: 0 auto 1.35rem;
+      text-align: center;
+    }
+
+    .hero-headline-highlight {
+      background: linear-gradient(95deg, #60a5fa 0%, #34d399 55%, #f8fafc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-quote-box {
+      max-width: 760px;
+      margin: 0 auto 1.9rem;
+      padding: 1.15rem 1.65rem;
+      background: rgba(16, 185, 129, 0.07);
+      border: 1px solid rgba(16, 185, 129, 0.28);
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    .hero-quote-box p {
+      font-size: 1.04rem;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .hero-quote-box cite {
+      display: block;
+      margin-top: 0.45rem;
+      font-size: 0.78rem;
+      font-style: normal;
+      font-family: var(--font-mono);
+      color: #6ee7b7;
+    }
+
+    .hero-cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2.35rem;
+    }
+
+    .btn-stage-large {
+      padding: 0.88rem 1.6rem;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.94rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.22s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-stage-large.primary {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #04130e;
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-stage-large.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 36px rgba(16, 185, 129, 0.45);
+    }
+
+    .btn-stage-large.secondary {
+      background: rgba(15, 23, 42, 0.88);
+      color: var(--text-primary);
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+
+    .btn-stage-large.secondary:hover {
+      border-color: #60a5fa;
+      background: rgba(30, 41, 59, 0.92);
+    }
+
+    /* Centered 4-KPI Strip */
+    .hero-telemetry-strip {
+      width: 100%;
+      max-width: 1020px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin: 0 auto 2.35rem;
+    }
+
+    .telemetry-chip {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      padding: 1.1rem 0.95rem;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+    }
+
+    .telemetry-chip .val {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .telemetry-chip .lbl {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* Hero Centerpiece: Live Neural Vision HUD Card */
+    .hero-hud-card {
+      width: 100%;
+      max-width: 1020px;
+      margin: 0 auto;
+      background: var(--bg-elevated);
+      border: 1px solid rgba(56, 189, 248, 0.32);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow:
+        0 28px 75px rgba(0, 0, 0, 0.68),
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    .hud-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.85rem 1.35rem;
+      background: rgba(5, 8, 17, 0.92);
+      border-bottom: 1px solid var(--border-subtle);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .hud-cam-id {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      color: #e2e8f0;
+    }
+
+    .hud-badges {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .hud-badge {
+      padding: 0.22rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.32);
+    }
+
+    .hud-canvas-wrap {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      background: #060a14;
+    }
+
+    #heroVisionCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .hud-footer-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      padding: 0.9rem 1.35rem;
+      background: rgba(5, 8, 17, 0.94);
+      border-top: 1px solid var(--border-subtle);
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      gap: 0.75rem;
+      text-align: center;
+    }
+
+    .hud-metric-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hud-metric-item span {
+      color: var(--text-muted);
+      display: block;
+      font-size: 0.68rem;
+      margin-bottom: 0.15rem;
+    }
+
+    .hud-metric-item strong {
+      color: #f8fafc;
+    }
+
+    /* ==========================================================================
+       ACTO I: EL PROBLEMA EN LA CALLE (PERSONA 1)
+       ========================================================================== */
+    .act1-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.65rem;
+      align-items: stretch;
+    }
+
+    .stat-manifesto-card,
+    .paradigm-comparator {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+    }
+
+    .big-impact-number {
+      font-family: var(--font-display);
+      font-size: clamp(3.1rem, 5vw, 4.5rem);
+      font-weight: 700;
+      line-height: 0.98;
+      letter-spacing: -0.04em;
+      color: var(--signal-critical);
+      margin: 0.6rem 0 0.7rem;
+    }
+
+    .stat-breakdown-list {
+      width: 100%;
+      margin-top: 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .stat-row {
+      background: rgba(5, 8, 17, 0.75);
+      border: 1px solid var(--border-subtle);
+      padding: 0.85rem 1.1rem;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      text-align: left;
+    }
+
+    .stat-row strong {
+      font-family: var(--font-mono);
+      color: #f8fafc;
+      font-size: 0.94rem;
+      white-space: nowrap;
+    }
+
+    .comparator-tabs {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.55rem;
+      background: rgba(5, 8, 17, 0.9);
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 1.25rem;
+    }
+
+    .comp-tab-btn {
+      padding: 0.7rem 0.85rem;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-weight: 700;
+      font-size: 0.83rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .comp-tab-btn.active-legacy {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.48);
+    }
+
+    .comp-tab-btn.active-smart {
+      background: rgba(16, 185, 129, 0.2);
+      color: #6ee7b7;
+      box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.48);
+    }
+
+    .comparator-stage {
+      width: 100%;
+      background: rgba(5, 8, 17, 0.78);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+    }
+
+    .comp-feature-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+      margin-top: 1.15rem;
+    }
+
+    .comp-feature-box {
+      padding: 0.95rem;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.82);
+      border: 1px solid var(--border-subtle);
+      font-size: 0.84rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .comp-feature-box h4 {
+      font-size: 0.78rem;
+      font-family: var(--font-mono);
+      margin-bottom: 0.35rem;
+    }
+
+    /* ==========================================================================
+       ACTO II: OJOS, CEREBRO Y CUERPO (PERSONA 2)
+       ========================================================================== */
+    .triad-selector {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .triad-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 1.75rem 1.4rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      text-align: center;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.3);
+    }
+
+    .triad-card:hover,
+    .triad-card.active {
+      border-color: #38bdf8;
+      background: rgba(15, 27, 50, 0.94);
+      transform: translateY(-3px);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.48);
+    }
+
+    .triad-step-tag {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 0.24rem 0.7rem;
+      border-radius: 999px;
+      margin-bottom: 0.8rem;
+    }
+
+    .triad-card h3 {
+      font-family: var(--font-display);
+      font-size: 1.45rem;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    .triad-card p {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 1.1rem;
+      max-width: 34ch;
+    }
+
+    .triad-tech-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    .tech-pill {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 0.22rem 0.55rem;
+      border-radius: 6px;
+      background: rgba(5, 8, 17, 0.82);
+      border: 1px solid var(--border-subtle);
+      color: #cbd5e1;
+    }
+
+    /* Hardware & Architecture Deep-Dive Inspector */
+    .architecture-inspector {
+      width: 100%;
+      background: var(--bg-elevated);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      border-radius: var(--radius-xl);
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 1.75rem;
+      align-items: center;
+      box-shadow: 0 20px 55px rgba(0, 0, 0, 0.45);
+    }
+
+    .inspector-left-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .gpio-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      margin-top: 1.1rem;
+      background: rgba(5, 8, 17, 0.65);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .gpio-table th,
+    .gpio-table td {
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: center;
+    }
+
+    .gpio-table th {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: #93c5fd;
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .pin-badge {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 0.18rem 0.5rem;
+      border-radius: 6px;
+      background: rgba(37, 99, 235, 0.22);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.42);
+      display: inline-block;
+    }
+
+    .fsm-states-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.85rem;
+    }
+
+    .fsm-box {
+      background: rgba(5, 8, 17, 0.82);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.1rem 0.95rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .fsm-box strong {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+
+    .fsm-box p {
+      font-size: 0.79rem;
+      color: var(--text-secondary);
+    }
+
+    /* ==========================================================================
+       ACTO III: SIMULADOR EN VIVO Y ALERTA DE PELIGRO (PERSONA 3)
+       ========================================================================== */
+    .simulator-console {
+      width: 100%;
+      background: var(--bg-elevated);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.72);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .simulator-console.critical-alert {
+      border-color: var(--signal-critical);
+      box-shadow: 0 0 75px rgba(239, 68, 68, 0.45);
+    }
+
+    .sim-header {
+      background: rgba(5, 8, 17, 0.95);
+      padding: 1.1rem 1.4rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.9rem;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sim-step-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.6rem;
+    }
+
+    .sim-step-btn {
+      padding: 0.68rem 1.1rem;
+      border-radius: 10px;
+      font-family: var(--font-sans);
+      font-weight: 700;
+      font-size: 0.84rem;
+      cursor: pointer;
+      border: 1px solid var(--border-subtle);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      transition: all 0.2s ease;
+    }
+
+    .sim-step-btn:hover {
+      transform: translateY(-1px);
+      border-color: #60a5fa;
+    }
+
+    .sim-step-btn.step-normal.active {
+      background: rgba(16, 185, 129, 0.22);
+      border-color: var(--signal-safe);
+      color: #6ee7b7;
+    }
+
+    .sim-step-btn.step-danger.active {
+      background: rgba(239, 68, 68, 0.26);
+      border-color: var(--signal-critical);
+      color: #fca5a5;
+    }
+
+    .sim-step-btn.step-qr.active {
+      background: rgba(37, 99, 235, 0.25);
+      border-color: #60a5fa;
+      color: #bfdbfe;
+    }
+
+    .sim-body-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      min-height: 460px;
+    }
+
+    .sim-canvas-stage {
+      position: relative;
+      background: #060913;
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    #maquetaSimCanvas {
+      width: 100%;
+      height: 400px;
+      display: block;
+    }
+
+    .sim-emergency-banner {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      padding: 0.8rem 1.15rem;
+      border-radius: 12px;
+      background: rgba(220, 38, 38, 0.94);
+      border: 1px solid #fca5a5;
+      color: #ffffff;
+      font-family: var(--font-display);
+      font-weight: 700;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      text-align: center;
+      box-shadow: 0 12px 35px rgba(220, 38, 38, 0.6);
+      animation: emergencyFlash 0.65s infinite alternate;
+    }
+
+    .sim-emergency-banner.visible {
+      display: flex;
+    }
+
+    @keyframes emergencyFlash {
+      from { opacity: 1; transform: scale(1); }
+      to { opacity: 0.82; transform: scale(0.995); }
+    }
+
+    .sim-bottom-narration {
+      padding: 0.95rem 1.25rem;
+      background: rgba(5, 8, 17, 0.94);
+      border-top: 1px solid var(--border-subtle);
+      font-size: 0.87rem;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+      text-align: center;
+    }
+
+    /* Right Panel of Simulator: Digital Twin Semáforo S1/S2/S3 + QR Mobile */
+    .sim-twin-sidebar {
+      padding: 1.35rem;
+      background: rgba(8, 13, 25, 0.96);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+      gap: 1rem;
+    }
+
+    .twin-lights-row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+    }
+
+    .semaphore-unit {
+      background: #050811;
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 0.75rem 0.45rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .semaphore-unit h5 {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .bulbs-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.38rem;
+    }
+
+    .bulb {
+      width: 21px;
+      height: 21px;
+      border-radius: 50%;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.18s ease;
+    }
+
+    .bulb.red.on {
+      background: #ef4444;
+      box-shadow: 0 0 16px #ef4444;
+    }
+
+    .bulb.yellow.on {
+      background: #f59e0b;
+      box-shadow: 0 0 16px #f59e0b;
+    }
+
+    .bulb.green.on {
+      background: #10b981;
+      box-shadow: 0 0 16px #10b981;
+    }
+
+    .qr-citizen-card {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 0.65rem;
+    }
+
+    .qr-box-img {
+      background: #ffffff;
+      padding: 6px;
+      border-radius: 10px;
+      width: 92px;
+      height: 92px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+    }
+
+    .qr-box-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* ==========================================================================
+       ACTO IV: SMART CITIES, MAPA DE CALOR Y COSTO (PERSONA 4)
+       ========================================================================== */
+    .act4-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.65rem;
+      align-items: stretch;
+    }
+
+    .heatmap-card,
+    .economics-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 1.9rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+    }
+
+    #cartagenaHeatmapCanvas {
+      width: 100%;
+      height: 280px;
+      border-radius: 14px;
+      background: #060c1a;
+      border: 1px solid var(--border-subtle);
+      margin: 1rem 0;
+      display: block;
+      cursor: crosshair;
+    }
+
+    .cost-bars {
+      width: 100%;
+      margin-top: 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .cost-item {
+      width: 100%;
+      background: rgba(5, 8, 17, 0.78);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.1rem;
+      text-align: center;
+    }
+
+    .cost-item-head {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .cost-item-head strong {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+    }
+
+    .bar-track {
+      width: 100%;
+      height: 12px;
+      background: #0f172a;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+    }
+
+    /* ==========================================================================
+       SEMILLERO UNICOLOMBO CREDITS & CLOSING MANIFESTO (CENTERED 4 SPEAKERS)
+       ========================================================================== */
+    .closing-manifesto {
+      width: 100%;
+      background: linear-gradient(135deg, rgba(0, 75, 147, 0.26) 0%, rgba(15, 23, 42, 0.94) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.38);
+      border-radius: 26px;
+      padding: clamp(2rem, 4vw, 3.25rem);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-top: 2.5rem;
+      box-shadow: 0 24px 65px rgba(0, 0, 0, 0.5);
+    }
+
+    .closing-quote {
+      font-family: var(--font-display);
+      font-size: clamp(1.3rem, 2.2vw, 1.95rem);
+      font-weight: 600;
+      max-width: 46ch;
+      margin: 1.1rem auto 1.85rem;
+      line-height: 1.32;
+      text-align: center;
+    }
+
+    .team-grid {
+      width: 100%;
+      max-width: 980px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.95rem;
+      margin-top: 1.35rem;
+    }
+
+    .member-card {
+      background: rgba(5, 8, 17, 0.82);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 1.2rem 0.95rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .member-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(96, 165, 250, 0.45);
+    }
+
+    .member-card span {
+      font-family: var(--font-mono);
+      font-size: 0.69rem;
+      color: #60a5fa;
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+
+    .member-card strong {
+      font-size: 0.95rem;
+      color: var(--text-primary);
+    }
+
+    .supervisor-card-wrap {
+      width: 100%;
+      max-width: 420px;
+      margin: 0.95rem auto 0;
+    }
+
+    /* ==========================================================================
+       FLOATING TELEPROMPTER DRAWER (GUION OFICIAL DE LA PONENCIA)
+       ========================================================================== */
+    .teleprompter-drawer {
+      position: fixed;
+      bottom: 20px;
+      left: calc(50% + (var(--sidebar-width) * 0.5));
+      transform: translateX(-50%) translateY(130%);
+      width: min(900px, calc(94vw - var(--sidebar-width)));
+      background: rgba(7, 11, 22, 0.96);
+      backdrop-filter: blur(22px);
+      border: 1px solid rgba(245, 158, 11, 0.55);
+      border-radius: 18px;
+      padding: 1.2rem 1.4rem;
+      z-index: 200;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.85);
+      transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+      text-align: center;
+    }
+
+    .teleprompter-drawer.open {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .teleprompter-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.8rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border-subtle);
+      flex-wrap: wrap;
+    }
+
+    .speaker-tabs {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .speaker-tab {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      padding: 0.38rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .speaker-tab.active {
+      background: rgba(245, 158, 11, 0.22);
+      border-color: #f59e0b;
+      color: #fde68a;
+      font-weight: 700;
+    }
+
+    .teleprompter-text {
+      font-size: 0.98rem;
+      line-height: 1.62;
+      color: #f8fafc;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 0 0.5rem;
+      text-align: center;
+    }
+
+    .teleprompter-text .stage-direction {
+      color: #fbbf24;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      display: block;
+      margin: 0.35rem 0;
+    }
+
+    /* PDF Preview Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 6, 14, 0.82);
+      backdrop-filter: blur(10px);
+      z-index: 300;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #0b1222;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 18px;
+      max-width: 660px;
+      width: 100%;
+      padding: 1.75rem;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.8);
+      text-align: center;
+    }
+
+    @media (max-width: 1080px) {
+      .mobile-menu-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .keynote-sidebar {
+        transform: translateX(-100%);
+      }
+      .keynote-sidebar.open {
+        transform: translateX(0);
+      }
+      main {
+        margin-left: 0;
+        width: 100%;
+      }
+      .teleprompter-drawer {
+        left: 50%;
+        width: 94vw;
+      }
+      .act1-grid,
+      .architecture-inspector,
+      .sim-body-grid,
+      .act4-grid {
+        grid-template-columns: 1fr;
+      }
+      .triad-selector {
+        grid-template-columns: 1fr;
+      }
+      .team-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .hero-telemetry-strip {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .team-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="optical-grid" aria-hidden="true"></div>
+
+  <!-- Botón de menú lateral en pantallas móviles -->
+  <button type="button" class="mobile-menu-trigger" onclick="document.getElementById('keynoteSidebar').classList.toggle('open')">
+    ☰ Menú
+  </button>
+
+  <div class="keynote-layout">
+    <!-- ======================================================================
+         MENÚ LATERAL IZQUIERDO (CON LOGO UNICOLOMBO Y NAVEGACIÓN DE LA PONENCIA)
+         ====================================================================== -->
+    <aside class="keynote-sidebar" id="keynoteSidebar" aria-label="Menú lateral de la ponencia">
+      <div class="sidebar-top">
+        <a href="#hero" class="unicolombo-badge" title="Fundación Universitaria Colombo Internacional — UNICOLOMBO">
+          <img src="logo unicolombo.png" onerror="this.onerror=null;this.src='../logo unicolombo.png';" alt="Logo UNICOLOMBO" />
+        </a>
+
+        <div class="sidebar-project-title">
+          <span class="live-dot"></span>
+          <span>AI-SafeCrossing</span>
+        </div>
+        <div class="sidebar-project-sub">
+          Semillero UNICOLOMBO · Cartagena
+        </div>
+
+        <div class="sidebar-nav-label">ESTRUCTURA DE LA PONENCIA</div>
+        <ul class="sidebar-nav-list">
+          <li>
+            <a href="#hero" class="sidebar-nav-link active">
+              <span class="nav-act-num">00</span>
+              <span>Inicio · Visión en Vivo</span>
+            </a>
+          </li>
+          <li>
+            <a href="#acto-1" class="sidebar-nav-link">
+              <span class="nav-act-num">01</span>
+              <span>El Problema en la Calle</span>
+            </a>
+          </li>
+          <li>
+            <a href="#acto-2" class="sidebar-nav-link">
+              <span class="nav-act-num">02</span>
+              <span>Ojos, Cerebro y Cuerpo</span>
+            </a>
+          </li>
+          <li>
+            <a href="#acto-3" class="sidebar-nav-link">
+              <span class="nav-act-num">03</span>
+              <span>Demostración en Vivo</span>
+            </a>
+          </li>
+          <li>
+            <a href="#acto-4" class="sidebar-nav-link">
+              <span class="nav-act-num">04</span>
+              <span>Smart City &amp; Cierre</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="sidebar-bottom">
+        <button type="button" id="btnToggleTeleprompter" class="btn-keynote btn-teleprompter" title="Abrir Guion Oficial de los 4 Ponentes (Tecla G)">
+          <span>🎙️</span>
+          <span>Guion en Escena (G)</span>
+        </button>
+        <a href="frontend/index.html" class="btn-keynote btn-primary-cta" title="Abrir el Centro de Mando Operativo en Tiempo Real">
+          <span>⚡</span>
+          <span>Dashboard en Vivo</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- ======================================================================
+         ESCENARIO PRINCIPAL CENTRADO
+         ====================================================================== -->
+    <main>
+      <!-- ====================================================================
+           HERO STAGE: DIRECTAMENTE EL TITULAR SIN ELEMENTOS INVASIVOS ARRIBA
+           ==================================================================== -->
+      <section id="hero" class="stage-section hero-stage">
+        <h1 class="hero-headline">
+          Un paso de cebra inteligente con <span class="hero-headline-highlight">ojos y cerebro propios.</span>
+        </h1>
+
+        <div class="hero-quote-box">
+          <p>
+            “¿Qué pasaría si el paso de cebra pudiera ver lo que pasa en la calle, supiera cuándo hay una persona esperando para cruzar y pudiera frenar a los carros a tiempo o avisar si viene un peligro?”
+          </p>
+          <cite>— AI-SafeCrossing · Innovación en Seguridad Vial Activa</cite>
+        </div>
+
+        <div class="hero-cta-row">
+          <a href="#acto-3" class="btn-stage-large primary">
+            <span>▶</span>
+            <span>Iniciar Demostración Interactiva</span>
+          </a>
+          <button type="button" id="btnHeroOpenGuion" class="btn-stage-large secondary">
+            <span>📜</span>
+            <span>Modo Ponente (4 Intervenciones)</span>
+          </button>
+        </div>
+
+        <!-- Centered 4-Card Telemetry Row -->
+        <div class="hero-telemetry-strip">
+          <div class="telemetry-chip">
+            <span class="val" style="color:#34d399;">~5 ms</span>
+            <span class="lbl">Inferencia Neuronal YOLOv8n</span>
+          </div>
+          <div class="telemetry-chip">
+            <span class="val" style="color:#60a5fa;">30.0 FPS</span>
+            <span class="lbl">Streaming RTSP en Tiempo Real</span>
+          </div>
+          <div class="telemetry-chip">
+            <span class="val" style="color:#fbbf24;">&lt; 100 ms</span>
+            <span class="lbl">Actuación Física Semáforo ESP32</span>
+          </div>
+          <div class="telemetry-chip">
+            <span class="val">2,000+</span>
+            <span class="lbl">Comunidad Unicolombo Protegida</span>
+          </div>
+        </div>
+
+        <!-- Centered Live Neural Vision HUD Card -->
+        <div class="hero-hud-card">
+          <div class="hud-topbar">
+            <div class="hud-cam-id">
+              <span class="live-dot"></span>
+              <span>CAM-01 · VTA-84920 ORBIT · CORREDOR CUATRO VIENTOS</span>
+            </div>
+            <div class="hud-badges">
+              <span class="hud-badge">YOLOv8n ACTIVO</span>
+              <span class="hud-badge" style="background:rgba(56,189,248,0.14);color:#38bdf8;border-color:rgba(56,189,248,0.3);">CEBRA CALIBRADA</span>
+            </div>
+          </div>
+
+          <div class="hud-canvas-wrap">
+            <canvas id="heroVisionCanvas" width="960" height="380"></canvas>
+          </div>
+
+          <div class="hud-footer-metrics">
+            <div class="hud-metric-item">
+              <span>TIEMPO DE COLISIÓN (TTC)</span>
+              <strong id="heroHudTtc" style="color:#34d399;">4.8 s · PASO SEGURO</strong>
+            </div>
+            <div class="hud-metric-item">
+              <span>ACTORES RECONOCIDOS POR IA</span>
+              <strong id="heroHudActors">Peatón (0.96) · Automóvil (0.94)</strong>
+            </div>
+            <div class="hud-metric-item">
+              <span>ESTADO SEMÁFORO ESP32</span>
+              <strong id="heroHudSignal" style="color:#60a5fa;">LUZ VERDE PEATONAL ACTIVA</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           ACTO I — PERSONA 1: EL PROBLEMA EN LA CALLE Y NUESTRA IDEA
+           ==================================================================== -->
+      <section id="acto-1" class="stage-section">
+        <div class="section-header-center">
+          <div class="speaker-cue-pill">
+            <span>ACTO I · PERSONA 1</span>
+            <strong>El Problema en la Calle y Nuestra Idea</strong>
+          </div>
+
+          <h2 class="section-title">
+            Semáforos con tecnología de hace 50 años frente a una calle que cambia en milisegundos.
+          </h2>
+          <p class="section-lead">
+            En Colombia, los peatones, ciclistas y motociclistas no tienen un chasis de metal que los proteja. Mientras tanto, las esquinas siguen gobernadas por relojes fijos que cambian sin mirar quién está cruzando.
+          </p>
+        </div>
+
+        <div class="act1-grid">
+          <!-- Left: Real Vulnerability Statistics -->
+          <div class="stat-manifesto-card">
+            <div>
+              <span style="font-family:var(--font-mono);font-size:0.78rem;color:#fca5a5;">DIAGNÓSTICO VIAL COLOMBIA · ANSV &amp; VISIÓN CERO</span>
+              <div class="big-impact-number">+60% a 88%</div>
+              <h3 style="font-family:var(--font-display);font-size:1.35rem;margin-bottom:0.65rem;">
+                De las personas que pierden la vida en las vías son actores viales vulnerables.
+              </h3>
+              <p style="color:var(--text-secondary);font-size:0.93rem;max-width:50ch;margin:0 auto;">
+                En corredores universitarios como el <strong>Sector Cuatro Vientos en Cartagena</strong>, miles de estudiantes y adultos mayores cruzan a diario entre flujos intensos de motos, buses y automóviles.
+              </p>
+            </div>
+
+            <div class="stat-breakdown-list">
+              <div class="stat-row">
+                <span>🚶‍♂️ Peatones, Ciclistas y Motociclistas en Ciudad</span>
+                <strong style="color:#f87171;">&gt; 60% Fatalidades</strong>
+              </div>
+              <div class="stat-row">
+                <span>📊 Índice Nacional de Actores Vulnerables (ANSV)</span>
+                <strong style="color:#fbbf24;">88% del Total Nacional</strong>
+              </div>
+              <div class="stat-row">
+                <span>⏱️ Tecnología de Semáforos Tradicionales</span>
+                <strong style="color:#94a3b8;">Ciegos · Reloj Fijo (30 s)</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Interactive Paradigm Switcher -->
+          <div class="paradigm-comparator">
+            <div style="width:100%;">
+              <div class="comparator-tabs" role="tablist">
+                <button type="button" id="tabLegacyBtn" class="comp-tab-btn active-legacy" onclick="switchParadigm('legacy')">
+                  🔴 Semáforo Tradicional (Hace 50 Años)
+                </button>
+                <button type="button" id="tabSmartBtn" class="comp-tab-btn" onclick="switchParadigm('smart')">
+                  🟢 AI-SafeCrossing (Visión Activa)
+                </button>
+              </div>
+
+              <div id="paradigmContentLegacy" class="comparator-stage">
+                <div>
+                  <span style="font-family:var(--font-mono);font-size:0.75rem;color:#f87171;">DIAGNÓSTICO DEL PROBLEMA ACTUAL</span>
+                  <h3 style="font-family:var(--font-display);font-size:1.45rem;margin:0.45rem 0 0.65rem;">
+                    “Los semáforos actuales son completamente ciegos.”
+                  </h3>
+                  <p style="color:var(--text-secondary);font-size:0.92rem;max-width:46ch;margin:0 auto;">
+                    Cuentan 30 segundos y cambian sin importar si no viene ningún carro, o cambian a rojo para el peatón cuando un adulto mayor o una mamá con un coche apenas va por la mitad de la calle.
+                  </p>
+                </div>
+                <div class="comp-feature-grid">
+                  <div class="comp-feature-box">
+                    <h4 style="color:#f87171;">❌ CERO PERCEPCIÓN</h4>
+                    <p>No distingue entre una vía vacía, un estudiante esperando o una ambulancia en emergencia.</p>
+                  </div>
+                  <div class="comp-feature-box">
+                    <h4 style="color:#f87171;">❌ REACCIÓN TARDÍA</h4>
+                    <p>Las autoridades solo intervienen la esquina después de que ya ocurrió una tragedia.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div id="paradigmContentSmart" class="comparator-stage" style="display:none;">
+                <div>
+                  <span style="font-family:var(--font-mono);font-size:0.75rem;color:#34d399;">NUESTRA SOLUCIÓN · SEMILLERO UNICOLOMBO</span>
+                  <h3 style="font-family:var(--font-display);font-size:1.45rem;margin:0.45rem 0 0.65rem;">
+                    Visión Computacional + Predicción de Peligro en Vivo
+                  </h3>
+                  <p style="color:var(--text-secondary);font-size:0.92rem;max-width:46ch;margin:0 auto;">
+                    El paso de cebra observa continuamente la calle y el andén. Reconoce al peatón esperando, verifica la distancia de los vehículos y activa el cruce seguro o lanza alertas de emergencia al instante.
+                  </p>
+                </div>
+                <div class="comp-feature-grid">
+                  <div class="comp-feature-box">
+                    <h4 style="color:#34d399;">✔ PROTECCIÓN EN VIVO</h4>
+                    <p>Calcula velocidad y distancia para activar alertas sonoras, visuales y móviles si un carro no frena.</p>
+                  </div>
+                  <div class="comp-feature-box">
+                    <h4 style="color:#34d399;">✔ PREVENCIÓN INTELIGENTE</h4>
+                    <p>Guarda cada cuasi-colisión en mapas de calor para arreglar esquinas antes de un accidente.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:1.1rem;font-size:0.79rem;color:var(--text-muted);text-align:center;">
+              Haz clic en las pestañas superiores para comparar durante la ponencia
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           ACTO II — PERSONA 2: OJOS, CEREBRO Y CUERPO (ARQUITECTURA)
+           ==================================================================== -->
+      <section id="acto-2" class="stage-section">
+        <div class="section-header-center">
+          <div class="speaker-cue-pill">
+            <span>ACTO II · PERSONA 2</span>
+            <strong>Cómo Funciona el Sistema sin Complicaciones</strong>
+          </div>
+
+          <h2 class="section-title">
+            Ojos, Cerebro y Cuerpo trabajando juntos en milésimas de segundo.
+          </h2>
+          <p class="section-lead">
+            Imaginen nuestro sistema como un ser humano cuidando la esquina: <strong>los ojos</strong> miran la calle y el andén, <strong>el cerebro</strong> con Inteligencia Artificial reconoce cada actor vial y <strong>el cuerpo</strong> electrónico controla el semáforo de forma segura.
+          </p>
+        </div>
+
+        <!-- Interactive Triad Selector (Centered Cards) -->
+        <div class="triad-selector">
+          <div class="triad-card active" id="triadCardEyes" onclick="selectTriad('eyes')">
+            <span class="triad-step-tag">01 · PERCEPCIÓN ÓPTICA (30 FPS)</span>
+            <h3>👁️ Los Ojos</h3>
+            <p>
+              Cámara de video apuntando directamente hacia la calle y hacia el andén con transmisión fluida en tiempo real y calibración del paso de cebra.
+            </p>
+            <div class="triad-tech-badges">
+              <span class="tech-pill">Cámara IP VTA-84920</span>
+              <span class="tech-pill">RTSP 30 FPS</span>
+              <span class="tech-pill">Seguimiento PTZ</span>
+            </div>
+          </div>
+
+          <div class="triad-card" id="triadCardBrain" onclick="selectTriad('brain')">
+            <span class="triad-step-tag">02 · INTELIGENCIA ARTIFICIAL (~5 ms)</span>
+            <h3>🧠 El Cerebro</h3>
+            <p>
+              Programa con Inteligencia Artificial (YOLOv8) entrenado para distinguir si es una persona, bicicleta, moto, carro, bus o ambulancia y predecir riesgos.
+            </p>
+            <div class="triad-tech-badges">
+              <span class="tech-pill">Visión YOLOv8n</span>
+              <span class="tech-pill">Cálculo TTC / Velocidad</span>
+              <span class="tech-pill">Python + FastAPI</span>
+            </div>
+          </div>
+
+          <div class="triad-card" id="triadCardBody" onclick="selectTriad('body')">
+            <span class="triad-step-tag">03 · CONTROL IOT AUTÓNOMO (&lt; 100 ms)</span>
+            <h3>🚦 El Cuerpo</h3>
+            <p>
+              Tarjeta electrónica microcontroladora ESP32 conectada a las luces del semáforo y al botón peatonal físico, con autonomía ante fallos de red.
+            </p>
+            <div class="triad-tech-badges">
+              <span class="tech-pill">Microcontrolador ESP32</span>
+              <span class="tech-pill">Semáforos S1 / S2 / S3</span>
+              <span class="tech-pill">Autonomía Fail-Safe</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Deep-Dive Inspector Panel -->
+        <div class="architecture-inspector" id="triadInspectorBox">
+          <div class="inspector-left-box">
+            <span style="font-family:var(--font-mono);font-size:0.75rem;color:#38bdf8;" id="triadInspectorEyebrow">
+              ARQUITECTURA INTEGRADA · OJOS, CEREBRO Y CUERPO
+            </span>
+            <h3 style="font-family:var(--font-display);font-size:1.55rem;margin:0.4rem 0 0.65rem;" id="triadInspectorTitle">
+              Conexión Inalámbrica Ultrarrápida y Hardware ESP32
+            </h3>
+            <p style="color:var(--text-secondary);font-size:0.91rem;max-width:52ch;" id="triadInspectorDesc">
+              Todo ocurre en milésimas de segundo por red inalámbrica. Y si por alguna razón la red llegara a fallar, el semáforo ESP32 es autónomo para seguir funcionando de manera segura y no dejar la calle a oscuras.
+            </p>
+
+            <table class="gpio-table" aria-label="Asignación de Pines GPIO ESP32">
+              <thead>
+                <tr>
+                  <th>Subcomponente en Maqueta</th>
+                  <th>Pin ESP32</th>
+                  <th>Función Operativa</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Pulsador Peatonal Físico</td>
+                  <td><span class="pin-badge">GPIO 18</span></td>
+                  <td>Solicitud de paso con filtro anti-rebote</td>
+                </tr>
+                <tr>
+                  <td>S2 · Semáforo Peatonal</td>
+                  <td><span class="pin-badge">GPIO 21 / 19</span></td>
+                  <td>Luz Verde (Pin 21) y Luz Roja (Pin 19)</td>
+                </tr>
+                <tr>
+                  <td>S1 · Vehicular Sentido 1</td>
+                  <td><span class="pin-badge">GPIO 25 / 26 / 27</span></td>
+                  <td>Verde (25), Amarillo (26) y Rojo (27)</td>
+                </tr>
+                <tr>
+                  <td>S3 · Vehicular Sentido 2</td>
+                  <td><span class="pin-badge">GPIO 14 / 12 / 13</span></td>
+                  <td>Verde (14), Amarillo (12) y Rojo (13)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <div style="margin-bottom:0.85rem;font-family:var(--font-mono);font-size:0.76rem;color:#93c5fd;text-align:center;">
+              CICLO DE RESPUESTA INTELIGENTE EN LA ESQUINA
+            </div>
+            <div class="fsm-states-grid">
+              <div class="fsm-box">
+                <strong style="color:#94a3b8;">1. VIGILANCIA ACTIVA</strong>
+                <p>Monitoreo continuo a 30 FPS. Mientras no hay peatones, los vehículos mantienen luz verde fluida.</p>
+              </div>
+              <div class="fsm-box">
+                <strong style="color:#60a5fa;">2. DETECCIÓN PEATONAL</strong>
+                <p>Al llegar una persona a la cebra o pulsar el botón, la IA la identifica y evalúa la distancia de los carros.</p>
+              </div>
+              <div class="fsm-box">
+                <strong style="color:#34d399;">3. PASO PROTEGIDO</strong>
+                <p>Conmuta el semáforo vehicular a amarillo y rojo, habilitando luz verde inmediata para el peatón.</p>
+              </div>
+              <div class="fsm-box">
+                <strong style="color:#fbbf24;">4. AUTONOMÍA SEGURA</strong>
+                <p>Si la red inalámbrica falla, el microcontrolador mantiene el ciclo seguro sin dejar la esquina a oscuras.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           ACTO III — PERSONA 3: DEMOSTRACIÓN EN VIVO Y ALERTA DE PELIGRO
+           ==================================================================== -->
+      <section id="acto-3" class="stage-section">
+        <div class="section-header-center">
+          <div class="speaker-cue-pill">
+            <span>ACTO III · PERSONA 3</span>
+            <strong>Demostración en Vivo y Alerta de Peligro</strong>
+          </div>
+
+          <h2 class="section-title">
+            La verdadera magia ocurre cuando un conductor no frena: reacción en fracciones de segundo.
+          </h2>
+          <p class="section-lead">
+            Prueba aquí mismo los <strong>3 pasos de la demostración en vivo</strong> junto a la maqueta: cruce normal asistido, alerta roja y sonora ante una cuasi-colisión (&lt; 2 segundos) y conexión con el celular del ciudadano mediante código QR.
+          </p>
+        </div>
+
+        <div class="simulator-console" id="simulatorConsole">
+          <div class="sim-header">
+            <div class="sim-step-controls">
+              <button type="button" class="sim-step-btn" id="btnSimIdle" onclick="runDemoScenario('idle')">
+                <span>🔄</span>
+                <span>Vista Inicial (Vía Libre)</span>
+              </button>
+              <button type="button" class="sim-step-btn step-normal active" id="btnSimStep1" onclick="runDemoScenario('step1')">
+                <span>🚶‍♂️</span>
+                <span>Paso 1: Cruce Normal</span>
+              </button>
+              <button type="button" class="sim-step-btn step-danger" id="btnSimStep2" onclick="runDemoScenario('step2')">
+                <span>🚨</span>
+                <span>Paso 2: Peligro Inminente (&lt; 2s Cuasi-Colisión)</span>
+              </button>
+              <button type="button" class="sim-step-btn step-qr" id="btnSimStep3" onclick="runDemoScenario('step3')">
+                <span>📱</span>
+                <span>Paso 3: Conexión Ciudadana QR</span>
+              </button>
+            </div>
+
+            <label style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary);display:inline-flex;align-items:center;gap:0.45rem;cursor:pointer;">
+              <input type="checkbox" id="chkVoiceAlarm" checked />
+              <span>🔊 Alarma Sonora y de Voz</span>
+            </label>
+          </div>
+
+          <div class="sim-body-grid">
+            <!-- Interactive Crosswalk & Maqueta Canvas -->
+            <div class="sim-canvas-stage">
+              <div class="sim-emergency-banner" id="simEmergencyBanner">
+                <span>⚠️ ¡ALERTA DE COLISIÓN! · CUASI-COLISIÓN EN MENOS DE 2 SEGUNDOS</span>
+              </div>
+
+              <canvas id="maquetaSimCanvas" width="820" height="400"></canvas>
+
+              <div class="sim-bottom-narration">
+                <div id="simStepExplanation">
+                  <strong>Paso 1 (Cruce Normal):</strong> Se dibuja un recuadro verde sobre la persona («Peatón detectado»). El semáforo físico cambia: amarillo para los carros, luego rojo, y el peatón recibe su luz verde.
+                </div>
+                <div style="font-family:var(--font-mono);font-size:0.79rem;color:#34d399;" id="simMetricsReadout">
+                  Tiempo para Colisión (TTC): 6.2 s · Cruce Seguro
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Sidebar: Digital Twin S1/S2/S3 + QR Scanner -->
+            <div class="sim-twin-sidebar">
+              <div style="width:100%;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:0.3rem;margin-bottom:0.7rem;">
+                  <span style="font-family:var(--font-mono);font-size:0.73rem;color:#93c5fd;">SEMÁFOROS EN TIEMPO REAL (ESP32)</span>
+                  <span id="simFsmBadge" style="font-family:var(--font-mono);font-size:0.71rem;padding:0.2rem 0.6rem;border-radius:999px;background:rgba(16,185,129,0.2);color:#34d399;">PEATÓN DETECTADO · PASO VERDE</span>
+                </div>
+
+                <div class="twin-lights-row">
+                  <div class="semaphore-unit">
+                    <h5>S1 CARROS</h5>
+                    <div class="bulbs-stack">
+                      <div class="bulb red on" id="s1Red"></div>
+                      <div class="bulb yellow" id="s1Yellow"></div>
+                      <div class="bulb green" id="s1Green"></div>
+                    </div>
+                  </div>
+                  <div class="semaphore-unit">
+                    <h5>S2 PEATÓN</h5>
+                    <div class="bulbs-stack" style="height:74px;">
+                      <div class="bulb red" id="s2Red"></div>
+                      <div class="bulb green on" id="s2Green"></div>
+                    </div>
+                  </div>
+                  <div class="semaphore-unit">
+                    <h5>S3 CARROS</h5>
+                    <div class="bulbs-stack">
+                      <div class="bulb red on" id="s3Red"></div>
+                      <div class="bulb yellow" id="s3Yellow"></div>
+                      <div class="bulb green" id="s3Green"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mobile Citizen Alert Preview & Live QR -->
+              <div class="qr-citizen-card" id="qrCitizenCard">
+                <div class="qr-box-img">
+                  <img id="qrPresentationImg" src="qr-viewer-local.png" onerror="this.onerror=null;this.src='../qr-viewer-local.png';" alt="Código QR Visor Ciudadano" />
+                </div>
+                <div>
+                  <span style="font-family:var(--font-mono);font-size:0.69rem;color:#38bdf8;display:block;">CONEXIÓN CON EL CIUDADANO (50 METROS)</span>
+                  <h4 style="font-size:0.94rem;margin:0.18rem 0;">Escanea el código QR con tu celular</h4>
+                  <p style="font-size:0.78rem;color:var(--text-secondary);max-width:30ch;margin:0 auto;">
+                    Sin instalar aplicaciones pesadas: avisa en el teléfono si la zona es segura o si hay peligro cerca.
+                  </p>
+                  <a href="frontend/viewer.html?qr=1" target="_blank" style="display:inline-block;margin-top:0.35rem;font-family:var(--font-mono);font-size:0.73rem;color:#6ee7b7;text-decoration:none;">
+                    Abrir Visor Ciudadano ↗
+                  </a>
+                </div>
+              </div>
+
+              <div style="width:100%;background:rgba(5,8,17,0.85);border:1px solid var(--border-subtle);border-radius:10px;padding:0.7rem;font-family:var(--font-mono);font-size:0.73rem;text-align:center;">
+                <div style="color:var(--text-muted);margin-bottom:0.15rem;">ALERTA EN EL CELULAR DEL PEATÓN:</div>
+                <div id="mobileStatusBanner" style="color:#34d399;font-weight:700;">
+                  🟢 ZONA SEGURA · Cruce peatonal con luz verde
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           ACTO IV — PERSONA 4: BENEFICIO PARA LA CIUDAD, COSTO Y CIERRE
+           ==================================================================== -->
+      <section id="acto-4" class="stage-section">
+        <div class="section-header-center">
+          <div class="speaker-cue-pill">
+            <span>ACTO IV · PERSONA 4</span>
+            <strong>Beneficio para la Ciudad y Cierre</strong>
+          </div>
+
+          <h2 class="section-title">
+            De estadísticas tristes a prevención inteligente para nuestras ciudades.
+          </h2>
+          <p class="section-lead">
+            Hoy las secretarías de tránsito colocan un semáforo o un reductor solo después de que muchas personas ya fueron atropelladas. <strong>AI-SafeCrossing</strong> guarda cada frenada peligrosa en un mapa de calor para arreglar las esquinas <strong>ANTES</strong> de que alguien pierda la vida.
+          </p>
+        </div>
+
+        <div class="act4-grid">
+          <!-- Left: Interactive Heatmap of Cartagena (Cuatro Vientos) + PDF Report -->
+          <div class="heatmap-card">
+            <div>
+              <span style="font-family:var(--font-mono);font-size:0.73rem;color:#f87171;">CARTAGENA D.T. Y C. · SECTOR CUATRO VIENTOS</span>
+              <h3 style="font-family:var(--font-display);font-size:1.4rem;margin-top:0.2rem;">Mapa de Calor de Situaciones de Riesgo</h3>
+            </div>
+
+            <canvas id="cartagenaHeatmapCanvas" width="600" height="280" title="Haz clic para simular el registro de un nuevo evento de riesgo en la esquina"></canvas>
+
+            <div style="width:100%;display:flex;flex-direction:column;align-items:center;gap:0.7rem;">
+              <span id="heatmapCountLabel" style="font-family:var(--font-mono);font-size:0.8rem;color:#fca5a5;">
+                14 Situaciones de Riesgo Registradas (Haz clic en el mapa para simular otra)
+              </span>
+              <button type="button" class="btn-keynote btn-primary-cta" onclick="openPdfModal()" style="max-width:310px;">
+                <span>📑</span>
+                <span>Exportar Reporte Formal en PDF</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Right: Cost Disruption Comparison -->
+          <div class="economics-card">
+            <div>
+              <span style="font-family:var(--font-mono);font-size:0.73rem;color:#34d399;">ACCESIBILIDAD Y TECNOLOGÍA PARA TODOS</span>
+              <h3 style="font-family:var(--font-display);font-size:1.4rem;margin:0.2rem 0 0.5rem;">
+                ¿Cuánto cuesta implementar esto?
+              </h3>
+              <p style="font-size:0.9rem;color:var(--text-secondary);max-width:44ch;margin:0 auto;">
+                Las cámaras de fotodetección y radares comerciales traídos de otros países cuestan más de <strong>50 millones de pesos por esquina</strong>. Nuestro proyecto usa componentes accesibles, software libre y microcontroladores económicos.
+              </p>
+            </div>
+
+            <div class="cost-bars">
+              <div class="cost-item">
+                <div class="cost-item-head">
+                  <span>Cámara / Radar Comercial Importado</span>
+                  <strong style="color:#f87171;">&gt; $50.000.000 COP por esquina</strong>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:100%;background:linear-gradient(90deg,#dc2626,#ef4444);"></div>
+                </div>
+                <small style="color:var(--text-muted);display:block;margin-top:0.35rem;">Costoso e inaccesible para barrios y colegios</small>
+              </div>
+
+              <div class="cost-item" style="border-color:rgba(16,185,129,0.45);">
+                <div class="cost-item-head">
+                  <span style="color:#6ee7b7;font-weight:700;">AI-SafeCrossing · Semillero UNICOLOMBO</span>
+                  <strong style="color:#34d399;">Fracción Mínima (~96% de Ahorro)</strong>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:6%;background:linear-gradient(90deg,#10b981,#34d399);"></div>
+                </div>
+                <small style="color:#a7f3d0;display:block;margin-top:0.35rem;">Cámara accesible + Software Libre + Microcontrolador ESP32</small>
+              </div>
+            </div>
+
+            <div style="width:100%;padding:0.85rem 1rem;border-radius:12px;background:rgba(0,75,147,0.22);border:1px solid rgba(59,130,246,0.38);font-size:0.84rem;text-align:center;">
+              Cualquier <strong>colegio, universidad o barrio</strong> puede implementarlo con una fracción muy pequeña de ese costo.
+            </div>
+          </div>
+        </div>
+
+        <!-- Closing Manifesto & Unicolombo Research Team (4 Ponentes + Supervisor, Centered) -->
+        <div class="closing-manifesto">
+          <div class="unicolombo-badge" style="margin:0 auto 0.9rem;width:auto;padding:8px 18px;">
+            <img src="logo unicolombo.png" onerror="this.onerror=null;this.src='../logo unicolombo.png';" alt="Fundación Universitaria Colombo Internacional UNICOLOMBO" style="height:36px;" />
+          </div>
+
+          <span style="font-family:var(--font-mono);font-size:0.76rem;color:#93c5fd;letter-spacing:0.06em;">
+            FUNDACIÓN UNIVERSITARIA COLOMBO INTERNACIONAL · CARTAGENA DE INDIAS
+          </span>
+
+          <blockquote class="closing-quote">
+            “Creemos firmemente que la ingeniería y la tecnología cobran su verdadero valor cuando dejan de ser código en una pantalla y se convierten en una herramienta que ayuda a que un estudiante, un niño o un abuelo regrese sano y salvo a su casa con su familia.”
+          </blockquote>
+
+          <div style="display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.4rem;">
+            <a href="frontend/index.html" class="btn-stage-large primary">
+              <span>🚀</span>
+              <span>Abrir Centro de Mando en Vivo</span>
+            </a>
+            <a href="frontend/viewer.html?qr=1" target="_blank" class="btn-stage-large secondary">
+              <span>📱</span>
+              <span>Abrir Visor Móvil Ciudadano</span>
+            </a>
+          </div>
+
+          <!-- 4 Ponentes del Semillero Centrados -->
+          <div class="team-grid">
+            <div class="member-card">
+              <span>PONENTE · INVESTIGADOR</span>
+              <strong>Juan Navia</strong>
+            </div>
+            <div class="member-card">
+              <span>PONENTE · INVESTIGADOR</span>
+              <strong>Isaac David Ayola Palacio</strong>
+            </div>
+            <div class="member-card">
+              <span>PONENTE · INVESTIGADOR</span>
+              <strong>Alejandro Escudero</strong>
+            </div>
+            <div class="member-card">
+              <span>PONENTE · INVESTIGADOR</span>
+              <strong>Juan David Cantillo Rodríguez</strong>
+            </div>
+          </div>
+
+          <!-- Supervisor Centrado -->
+          <div class="supervisor-card-wrap">
+            <div class="member-card" style="border-color:rgba(59,130,246,0.48);background:rgba(0,75,147,0.24);">
+              <span style="color:#fde68a;">SUPERVISIÓN Y AVAL ACADÉMICO</span>
+              <strong>Ing. Gerardo Esquivia</strong>
+              <small style="display:block;color:var(--text-secondary);font-size:0.77rem;margin-top:0.2rem;">Jefe de Semillero de Investigación · UNICOLOMBO</small>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ========================================================================
+       FLOATING TELEPROMPTER DRAWER (GUION LITERAL DE LOS 4 PONENTES)
+       ======================================================================== -->
+  <aside class="teleprompter-drawer" id="teleprompterDrawer" aria-label="Guion Oficial de la Ponencia">
+    <div class="teleprompter-top">
+      <div class="speaker-tabs">
+        <button type="button" class="speaker-tab active" onclick="showSpeakerScript(1)" id="tabSpeaker1">
+          Persona 1 · El Problema
+        </button>
+        <button type="button" class="speaker-tab" onclick="showSpeakerScript(2)" id="tabSpeaker2">
+          Persona 2 · Ojos, Cerebro y Cuerpo
+        </button>
+        <button type="button" class="speaker-tab" onclick="showSpeakerScript(3)" id="tabSpeaker3">
+          Persona 3 · Demo en Vivo
+        </button>
+        <button type="button" class="speaker-tab" onclick="showSpeakerScript(4)" id="tabSpeaker4">
+          Persona 4 · Ciudad y Cierre
+        </button>
+      </div>
+      <button type="button" class="btn-keynote" onclick="toggleTeleprompter()" style="width:auto;padding:0.35rem 0.75rem;font-size:0.75rem;">
+        ✕ Ocultar (G)
+      </button>
+    </div>
+
+    <div class="teleprompter-text" id="teleprompterBody"></div>
+  </aside>
+
+  <!-- ========================================================================
+       EXECUTIVE PDF REPORT MODAL (PARA EL ACTO IV)
+       ======================================================================== -->
+  <div class="modal-backdrop" id="pdfModalBackdrop" onclick="if(event.target===this)closePdfModal()">
+    <div class="modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border-subtle);">
+        <div style="text-align:left;">
+          <span style="font-family:var(--font-mono);font-size:0.74rem;color:#34d399;">REPORTE AUTOMÁTICO PARA INGENIERÍA DE TRÁNSITO</span>
+          <h3 style="font-family:var(--font-display);font-size:1.35rem;">Informe Ejecutivo Diario · AI-SafeCrossing</h3>
+        </div>
+        <button type="button" class="btn-keynote" onclick="closePdfModal()" style="width:auto;">✕</button>
+      </div>
+
+      <div style="background:rgba(5,8,17,0.85);border:1px solid var(--border-subtle);border-radius:12px;padding:1.2rem;font-size:0.88rem;margin-bottom:1.25rem;text-align:center;">
+        <p style="margin-bottom:0.85rem;color:var(--text-secondary);">
+          <strong>Punto Monitoreado:</strong> UNICOLOMBO — Corredor Vial Cuatro Vientos, Cartagena<br/>
+          <strong>Tecnología:</strong> Visión Artificial YOLOv8 (30 FPS) + Control IoT ESP32
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.65rem;font-family:var(--font-mono);font-size:0.78rem;">
+          <div style="padding:0.75rem;background:#0b1222;border-radius:8px;border:1px solid var(--border-subtle);">
+            <span style="color:var(--text-muted);display:block;">CUASI-COLISIONES</span>
+            <strong style="color:#f87171;font-size:1.05rem;">14 Registradas</strong>
+          </div>
+          <div style="padding:0.75rem;background:#0b1222;border-radius:8px;border:1px solid var(--border-subtle);">
+            <span style="color:var(--text-muted);display:block;">CRUCES SEGUROS</span>
+            <strong style="color:#34d399;font-size:1.05rem;">318 Peatones</strong>
+          </div>
+          <div style="padding:0.75rem;background:#0b1222;border-radius:8px;border:1px solid var(--border-subtle);">
+            <span style="color:var(--text-muted);display:block;">TIEMPO REACCIÓN</span>
+            <strong style="color:#60a5fa;font-size:1.05rem;">&lt; 100 ms</strong>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:center;gap:0.75rem;flex-wrap:wrap;">
+        <a href="/api/export/pdf" target="_blank" class="btn-keynote btn-primary-cta" style="width:auto;">
+          <span>📥</span>
+          <span>Generar Reporte PDF del Día (/api/export/pdf)</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       INTERACTIVE SCRIPTS: SIMULATIONS, VOICE ALARM & TELEPROMPTER
+       ======================================================================== -->
+  <script>
+    /* ------------------------------------------------------------------------
+       1. GUION OFICIAL DE LA PONENCIA (4 PERSONAS)
+       ------------------------------------------------------------------------ */
+    const SCRIPTS = {
+      1: `
+        <span class="stage-direction">(Avanza al centro del escenario, postura segura. Mira al público).</span>
+        “Hola a todos, muy buenos días. Hoy venimos a presentarles nuestro proyecto: <strong>AI-SafeCrossing</strong>, que en palabras muy sencillas es un paso de cebra inteligente con ojos y cerebro propios.<br><br>
+        Les hago una pregunta muy honesta para empezar: ¿A cuántos de ustedes les ha dado miedo cruzar una calle en nuestra ciudad? Creo que a todos. Todos hemos tenido que correr porque un carro o una moto dobló sin mirar, o hemos visto a una persona de la tercera edad atrapada a mitad de la calle porque el semáforo no le dio tiempo de terminar de pasar.<br><br>
+        Esto no es una coincidencia. En Colombia, <strong>más del 60% de las personas que pierden la vida en las calles son peatones, ciclistas y motociclistas</strong>. Son los más vulnerables porque no tienen un chasis de metal que los proteja.<br><br>
+        ¿Y cuál es el gran problema? Que la tecnología de los semáforos que tenemos en las esquinas hoy en día es de hace 50 años. Los semáforos actuales son completamente ciegos. Tienen un reloj fijo por dentro: cuentan 30 segundos y cambian, sin importar si no viene ningún carro, o peor aún, cambian a rojo para el peatón cuando una mamá con un coche apenas va por la mitad.<br><br>
+        Por eso creamos AI-SafeCrossing. Nos preguntamos: ¿Qué pasaría si el paso de cebra pudiera ver lo que pasa en la calle, supiera cuándo hay una persona esperando para cruzar y pudiera frenar a los carros a tiempo o avisar si viene un peligro? A continuación, mi compañero les va a explicar cómo funciona todo esto por dentro.”
+      `,
+      2: `
+        <span class="stage-direction">(Toma el relevo apoyándose en la sección Ojos, Cerebro y Cuerpo).</span>
+        “Muchas gracias. Para que entiendan cómo funciona nuestro sistema, imagínenlo como un ser humano que tiene tres partes trabajando juntas: <strong>ojos, cerebro y cuerpo</strong>.<br><br>
+        <strong>Primero, los ojos:</strong> Utilizamos una cámara de video común y corriente que apunta directamente hacia la calle y hacia el andén.<br>
+        <strong>Segundo, el cerebro:</strong> El video de la cámara llega a nuestro computador, donde corre un programa con Inteligencia Artificial. Reconoce si es una persona, una bicicleta, una moto, un carro o incluso una ambulancia.<br>
+        <strong>Tercero, el cuerpo:</strong> Tenemos esta pequeña tarjeta electrónica llamada <strong>ESP32</strong>, conectada a las luces del semáforo y a un botón físico para el peatón.<br><br>
+        Todo ocurre en cuestión de milésimas de segundo por red inalámbrica. Cuando una persona llega a la esquina, la cámara la reconoce al instante y si no vienen carros cerca le da la orden inmediata al semáforo de poner la luz verde. Y si la red llegara a fallar, el semáforo es autónomo para no dejar la calle a oscuras.<br><br>
+        Pero la parte más poderosa es lo que pasa cuando un conductor no frena o viene distraído con el celular. Mi compañero les va a hacer la demostración en vivo.”
+      `,
+      3: `
+        <span class="stage-direction">(Se ubica junto a la maqueta y el simulador interactivo del Acto III).</span>
+        “Gracias. Ahora queremos que vean el sistema funcionando en tiempo real aquí mismo.<br><br>
+        <strong>Paso 1: Cruce normal.</strong> (Presiona «Paso 1» o coloca el muñequito en la cebra). Automáticamente se dibuja un recuadro verde sobre la persona y el sistema dice 'Peatón detectado'. Como la vía está libre, el semáforo cambia: amarillo para los carros, luego rojo, y el peatón recibe su luz verde.<br><br>
+        <strong>Paso 2: ¿Qué pasa ante un peligro inminente?</strong> (Presiona «Paso 2» o acerca rápido el carrito hacia la cebra). Nuestro algoritmo calcula la distancia y velocidad del carro hacia el peatón. Si detecta que en menos de 2 segundos podría ocurrir una <strong>'cuasi-colisión'</strong>, la pantalla se pone en rojo, suena una alarma sonora y de voz advirtiendo del peligro, y el semáforo parpadea para salvar vidas en fracciones de segundo.<br><br>
+        <strong>Paso 3: Conexión con el ciudadano.</strong> (Presiona «Paso 3»). Miren este código QR en pantalla: invitamos al jurado a escanearlo. Sin instalar ninguna aplicación pesada, abre una página web que avisa al ciudadano en su propio teléfono si la zona donde está parado es segura o si hay peligro cerca.”
+      `,
+      4: `
+        <span class="stage-direction">(Se dirige al jurado/público en el Acto IV con tono de conclusión).</span>
+        “Muchas gracias. Como acaban de ver, AI-SafeCrossing protege a las personas en el segundo exacto en que van a cruzar. Pero también es una herramienta para las ciudades inteligentes.<br><br>
+        Hoy en día, las secretarías de movilidad colocan un semáforo o un reductor solo después de que muchas personas ya fueron atropelladas. Trabajan con estadísticas tristes.<br><br>
+        Nuestro sistema cambia eso por completo: cada vez que ocurre un 'susto' o frenada peligrosa, guarda fecha, hora y lugar exacto en este <strong>mapa de calor</strong>. Así la alcaldía sabe qué esquinas son peligrosas y puede arreglarlas <strong>ANTES</strong> de que alguien muera. Y con un clic en <strong>'Exportar Reporte'</strong> genera el PDF formal para los ingenieros de tránsito.<br><br>
+        ¿Y cuánto cuesta esto? Las cámaras comerciales importadas cuestan más de 50 millones de pesos por esquina. Nuestro proyecto utiliza componentes accesibles, software libre y microcontroladores económicos por una fracción mínima de ese costo.<br><br>
+        Para concluir: Creemos firmemente que la ingeniería y la tecnología cobran su verdadero valor cuando dejan de ser código en una pantalla y ayudan a que un estudiante, un niño o un abuelo regrese sano y salvo a su casa. ¡Muchísimas gracias!”
+      `
+    };
+
+    function showSpeakerScript(num) {
+      document.querySelectorAll('.speaker-tab').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx + 1 === num);
+      });
+      document.getElementById('teleprompterBody').innerHTML = SCRIPTS[num] || SCRIPTS[1];
+    }
+
+    function toggleTeleprompter(forceState) {
+      const drawer = document.getElementById('teleprompterDrawer');
+      const btn = document.getElementById('btnToggleTeleprompter');
+      const isOpen = typeof forceState === 'boolean' ? forceState : !drawer.classList.contains('open');
+      drawer.classList.toggle('open', isOpen);
+      btn.classList.toggle('active', isOpen);
+    }
+
+    document.getElementById('btnToggleTeleprompter').addEventListener('click', () => toggleTeleprompter());
+    document.getElementById('btnHeroOpenGuion').addEventListener('click', () => {
+      toggleTeleprompter(true);
+      showSpeakerScript(1);
+    });
+
+    showSpeakerScript(1);
+
+    // Highlight active section in lateral menu on scroll
+    const navLinks = document.querySelectorAll('.sidebar-nav-link');
+    const sections = ['hero', 'acto-1', 'acto-2', 'acto-3', 'acto-4'].map(id => document.getElementById(id));
+    window.addEventListener('scroll', () => {
+      let currentId = 'hero';
+      const scrollY = window.scrollY + 240;
+      sections.forEach(sec => {
+        if (sec && scrollY >= sec.offsetTop) {
+          currentId = sec.id;
+        }
+      });
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + currentId);
+      });
+    });
+
+    /* ------------------------------------------------------------------------
+       2. ACTO I: PARADIGM COMPARATOR
+       ------------------------------------------------------------------------ */
+    function switchParadigm(mode) {
+      const legacyBtn = document.getElementById('tabLegacyBtn');
+      const smartBtn = document.getElementById('tabSmartBtn');
+      const legacyBox = document.getElementById('paradigmContentLegacy');
+      const smartBox = document.getElementById('paradigmContentSmart');
+
+      if (mode === 'legacy') {
+        legacyBtn.className = 'comp-tab-btn active-legacy';
+        smartBtn.className = 'comp-tab-btn';
+        legacyBox.style.display = 'flex';
+        smartBox.style.display = 'none';
+      } else {
+        legacyBtn.className = 'comp-tab-btn';
+        smartBtn.className = 'comp-tab-btn active-smart';
+        legacyBox.style.display = 'none';
+        smartBox.style.display = 'flex';
+      }
+    }
+
+    /* ------------------------------------------------------------------------
+       3. ACTO II: TRIAD SELECTOR (OJOS, CEREBRO, CUERPO)
+       ------------------------------------------------------------------------ */
+    const TRIAD_DATA = {
+      eyes: {
+        eyebrow: '01 · LOS OJOS DEL SISTEMA · CAPTURA EN VIVO A 30.0 FPS',
+        title: 'Cámara de Video de Alta Velocidad + Calibración del Paso de Cebra',
+        desc: 'Apunta directamente hacia la calle y el andén, transmitiendo video continuo sin retraso y reconociendo automáticamente el área del paso peatonal.'
+      },
+      brain: {
+        eyebrow: '02 · EL CEREBRO CON INTELIGENCIA ARTIFICIAL · YOLOv8n',
+        title: 'Reconocimiento de Actores Viales y Cálculo de Velocidad y Distancia',
+        desc: 'Distingue en ~5 milisegundos si lo que se mueve en la escena es un peatón, una bicicleta, una moto, un carro, un bus o una ambulancia, proyectando trayectorias de 1 a 5 segundos.'
+      },
+      body: {
+        eyebrow: '03 · EL CUERPO ELECTRÓNICO · MICROCONTROLADOR ESP32',
+        title: 'Conexión Inalámbrica Ultrarrápida y Hardware ESP32',
+        desc: 'Todo ocurre en milésimas de segundo por red inalámbrica. Y si por alguna razón la red llegara a fallar, el semáforo ESP32 es autónomo para seguir funcionando de manera segura y no dejar la calle a oscuras.'
+      }
+    };
+
+    function selectTriad(part) {
+      document.getElementById('triadCardEyes').classList.toggle('active', part === 'eyes');
+      document.getElementById('triadCardBrain').classList.toggle('active', part === 'brain');
+      document.getElementById('triadCardBody').classList.toggle('active', part === 'body');
+
+      const info = TRIAD_DATA[part];
+      document.getElementById('triadInspectorEyebrow').textContent = info.eyebrow;
+      document.getElementById('triadInspectorTitle').textContent = info.title;
+      document.getElementById('triadInspectorDesc').textContent = info.desc;
+    }
+
+    /* ------------------------------------------------------------------------
+       4. HERO NEURAL VISION HUD CANVAS (AUTONOMOUS REAL-TIME ANIMATION)
+       ------------------------------------------------------------------------ */
+    (function initHeroCanvas() {
+      const canvas = document.getElementById('heroVisionCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let t = 0;
+
+      function drawHeroFrame() {
+        t += 0.018;
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+
+        // Road surface
+        ctx.fillStyle = '#090f1d';
+        ctx.fillRect(0, 0, w, h);
+
+        // Road lanes
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.16)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, h * 0.25);
+        ctx.lineTo(w, h * 0.25);
+        ctx.moveTo(0, h * 0.80);
+        ctx.lineTo(w, h * 0.80);
+        ctx.stroke();
+
+        // Center dashed line
+        ctx.save();
+        ctx.setLineDash([18, 14]);
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+        ctx.beginPath();
+        ctx.moveTo(0, h * 0.525);
+        ctx.lineTo(w, h * 0.525);
+        ctx.stroke();
+        ctx.restore();
+
+        // Crosswalk Polygon centered
+        const cwLeft = w * 0.43;
+        const cwRight = w * 0.57;
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cwLeft, h * 0.21, cwRight - cwLeft, h * 0.63);
+
+        // Zebra stripes
+        ctx.fillStyle = 'rgba(248, 250, 252, 0.24)';
+        for (let y = h * 0.24; y < h * 0.79; y += 28) {
+          ctx.fillRect(cwLeft + 12, y, cwRight - cwLeft - 24, 14);
+        }
+
+        // Centered polygon label
+        ctx.font = '600 11px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'center';
+        ctx.fillText('ZONA DE CEBRA MONITOREADA POR IA', w * 0.5, h * 0.17);
+
+        // Animated Pedestrian crossing
+        const pedY = h * 0.30 + ((Math.sin(t * 0.9) + 1) * 0.5) * (h * 0.38);
+        const pedX = w * 0.5;
+
+        // Pedestrian bounding box (YOLOv8)
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2.2;
+        ctx.strokeRect(pedX - 24, pedY - 34, 48, 68);
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.18)';
+        ctx.fillRect(pedX - 24, pedY - 34, 48, 68);
+
+        // Pedestrian person icon
+        ctx.fillStyle = '#34d399';
+        ctx.beginPath();
+        ctx.arc(pedX, pedY - 12, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(pedX - 7, pedY - 2, 14, 24);
+
+        // YOLO label
+        ctx.fillStyle = '#10b981';
+        ctx.fillRect(pedX - 60, pedY - 54, 120, 18);
+        ctx.fillStyle = '#04130e';
+        ctx.font = '700 11px "JetBrains Mono", monospace';
+        ctx.fillText('Peatón 0.96', pedX, pedY - 41);
+
+        // Animated Vehicle approaching and stopping safely
+        const cycle = (t * 0.45) % 1;
+        const carX = w * 0.12 + Math.min(cycle * 1.35, 0.72) * (w * 0.28);
+        const carY = h * 0.65;
+
+        // Trajectory prediction vector
+        ctx.save();
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(carX + 46, carY);
+        ctx.lineTo(cwLeft - 10, carY);
+        ctx.stroke();
+        ctx.restore();
+
+        // Vehicle hitbox
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(carX - 46, carY - 24, 92, 48);
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
+        ctx.fillRect(carX - 46, carY - 24, 92, 48);
+
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(carX - 58, carY - 44, 116, 18);
+        ctx.fillStyle = '#050811';
+        ctx.fillText('Automóvil 0.94', carX, carY - 31);
+
+        requestAnimationFrame(drawHeroFrame);
+      }
+
+      drawHeroFrame();
+    })();
+
+    /* ------------------------------------------------------------------------
+       5. ACTO III: INTERACTIVE MAQUETA SIMULATOR + WEB AUDIO & VOICE ALARM
+       ------------------------------------------------------------------------ */
+    let currentDemoMode = 'step1';
+    let simTick = 0;
+    let lastAlarmSpokenAt = 0;
+
+    function triggerEmergencyAudioAndVoice() {
+      const voiceChecked = document.getElementById('chkVoiceAlarm')?.checked;
+      if (!voiceChecked) return;
+
+      const now = Date.now();
+      if (now - lastAlarmSpokenAt < 4500) return;
+      lastAlarmSpokenAt = now;
+
+      // 1. Web Audio API tactical warning beep
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const actx = new AudioCtx();
+        [0, 0.22, 0.44].forEach((offset, idx) => {
+          const osc = actx.createOscillator();
+          const gain = actx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(idx % 2 === 0 ? 880 : 660, actx.currentTime + offset);
+          gain.gain.setValueAtTime(0.12, actx.currentTime + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + offset + 0.18);
+          osc.connect(gain);
+          gain.connect(actx.destination);
+          osc.start(actx.currentTime + offset);
+          osc.stop(actx.currentTime + offset + 0.19);
+        });
+      } catch (e) {}
+
+      // 2. SpeechSynthesis Voice Alert
+      try {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utter = new SpeechSynthesisUtterance('¡Alerta de colisión! Peligro inminente en el paso peatonal.');
+          utter.lang = 'es-CO';
+          utter.rate = 1.08;
+          utter.pitch = 1.05;
+          window.speechSynthesis.speak(utter);
+        }
+      } catch (e) {}
+    }
+
+    function setTrafficLights({ s1, s2, s3 }) {
+      ['Red', 'Yellow', 'Green'].forEach(c => {
+        document.getElementById('s1' + c)?.classList.toggle('on', s1 === c.toLowerCase());
+        document.getElementById('s3' + c)?.classList.toggle('on', s3 === c.toLowerCase());
+      });
+      ['Red', 'Green'].forEach(c => {
+        document.getElementById('s2' + c)?.classList.toggle('on', s2 === c.toLowerCase());
+      });
+    }
+
+    function runDemoScenario(mode) {
+      currentDemoMode = mode;
+      simTick = 0;
+
+      document.getElementById('btnSimIdle').classList.toggle('active', mode === 'idle');
+      document.getElementById('btnSimStep1').classList.toggle('active', mode === 'step1');
+      document.getElementById('btnSimStep2').classList.toggle('active', mode === 'step2');
+      document.getElementById('btnSimStep3').classList.toggle('active', mode === 'step3');
+
+      const consoleEl = document.getElementById('simulatorConsole');
+      const bannerEl = document.getElementById('simEmergencyBanner');
+      const expEl = document.getElementById('simStepExplanation');
+      const readoutEl = document.getElementById('simMetricsReadout');
+      const fsmBadge = document.getElementById('simFsmBadge');
+      const mobileBanner = document.getElementById('mobileStatusBanner');
+
+      if (mode === 'idle') {
+        consoleEl.classList.remove('critical-alert');
+        bannerEl.classList.remove('visible');
+        setTrafficLights({ s1: 'green', s2: 'red', s3: 'green' });
+        expEl.innerHTML = '<strong>Vista Inicial:</strong> El semáforo de los carros está en verde y el de las personas está en rojo porque no hay nadie cruzando.';
+        readoutEl.textContent = 'Vía Libre · Sin Peatones en Cruce';
+        readoutEl.style.color = '#94a3b8';
+        fsmBadge.textContent = 'FLUJO VEHICULAR EN VERDE';
+        fsmBadge.style.background = 'rgba(148,163,184,0.18)';
+        fsmBadge.style.color = '#cbd5e1';
+        mobileBanner.textContent = '⚪ MONITOREO ACTIVO · Vía vehicular habilitada';
+        mobileBanner.style.color = '#cbd5e1';
+      } else if (mode === 'step1') {
+        consoleEl.classList.remove('critical-alert');
+        bannerEl.classList.remove('visible');
+        setTrafficLights({ s1: 'red', s2: 'green', s3: 'red' });
+        expEl.innerHTML = '<strong>Paso 1 (Cruce Normal):</strong> Se dibuja un recuadro verde sobre la persona («Peatón detectado»). El semáforo físico cambia: amarillo para los carros, luego rojo, y el peatón recibe su luz verde.';
+        readoutEl.textContent = 'Tiempo para Colisión (TTC): 6.2 s · Cruce Seguro';
+        readoutEl.style.color = '#34d399';
+        fsmBadge.textContent = 'PEATÓN DETECTADO · PASO VERDE';
+        fsmBadge.style.background = 'rgba(16,185,129,0.2)';
+        fsmBadge.style.color = '#34d399';
+        mobileBanner.textContent = '🟢 ZONA SEGURA · Cruce peatonal con luz verde';
+        mobileBanner.style.color = '#34d399';
+      } else if (mode === 'step2') {
+        consoleEl.classList.add('critical-alert');
+        bannerEl.classList.add('visible');
+        expEl.innerHTML = '<strong>Paso 2 (Peligro Inminente / Cuasi-colisión):</strong> Un carro viene muy rápido y en menos de 2 segundos podría atropellar a la persona. Suena la alarma sonora y de voz y el semáforo parpadea.';
+        readoutEl.textContent = '¡CUASI-COLISIÓN DETECTADA! · TTC: 1.4 s (< 2.0 s)';
+        readoutEl.style.color = '#f87171';
+        fsmBadge.textContent = '¡ALERTA DE COLISIÓN INMINENTE!';
+        fsmBadge.style.background = 'rgba(239,68,68,0.25)';
+        fsmBadge.style.color = '#fca5a5';
+        mobileBanner.textContent = '🔴 ¡PELIGRO EN LA ESQUINA! Vehículo no frena (TTC 1.4s)';
+        mobileBanner.style.color = '#f87171';
+        triggerEmergencyAudioAndVoice();
+      } else if (mode === 'step3') {
+        consoleEl.classList.remove('critical-alert');
+        bannerEl.classList.remove('visible');
+        setTrafficLights({ s1: 'red', s2: 'green', s3: 'red' });
+        expEl.innerHTML = '<strong>Paso 3 (Conexión con el Ciudadano):</strong> Al escanear el código QR con el celular, sin instalar ninguna aplicación pesada, se abre el visor que avisa si la esquina es segura o si hay peligro cerca.';
+        readoutEl.textContent = 'Geocerca Ciudadana de 50 Metros Sincronizada';
+        readoutEl.style.color = '#60a5fa';
+        fsmBadge.textContent = 'CONEXIÓN QR CIUDADANA ACTIVA';
+        fsmBadge.style.background = 'rgba(59,130,246,0.25)';
+        fsmBadge.style.color = '#93c5fd';
+        mobileBanner.textContent = '📱 CONECTADO VÍA QR · Avisos en tiempo real en tu teléfono';
+        mobileBanner.style.color = '#60a5fa';
+      }
+    }
+
+    (function initMaquetaSimulatorCanvas() {
+      const canvas = document.getElementById('maquetaSimCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      function renderSim() {
+        simTick += 0.022;
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+
+        // Background asphalt
+        ctx.fillStyle = currentDemoMode === 'step2' && Math.floor(simTick * 6) % 2 === 0
+          ? '#19080d'
+          : '#070c18';
+        ctx.fillRect(0, 0, w, h);
+
+        // Sidewalks
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, w, 68);
+        ctx.fillRect(0, h - 68, w, 68);
+
+        // Centered Crosswalk zebra
+        const zW = 116;
+        const zX = (w - zW) * 0.5;
+        ctx.fillStyle = 'rgba(248, 250, 252, 0.25)';
+        for (let y = 78; y < h - 78; y += 30) {
+          ctx.fillRect(zX, y, zW, 16);
+        }
+
+        // Crosswalk polygon border
+        ctx.strokeStyle = currentDemoMode === 'step2' ? '#ef4444' : '#10b981';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(zX - 8, 70, zW + 16, h - 140);
+
+        if (currentDemoMode === 'step2') {
+          const flashOn = Math.floor(simTick * 8) % 2 === 0;
+          setTrafficLights({
+            s1: flashOn ? 'red' : 'yellow',
+            s2: flashOn ? 'red' : 'off',
+            s3: flashOn ? 'red' : 'yellow'
+          });
+        }
+
+        ctx.textAlign = 'center';
+
+        if (currentDemoMode === 'idle') {
+          const car1X = ((simTick * 180) % (w + 140)) - 70;
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(car1X, h * 0.56, 78, 38);
+          ctx.strokeStyle = '#38bdf8';
+          ctx.strokeRect(car1X - 6, h * 0.56 - 6, 90, 50);
+          ctx.font = '700 11px "JetBrains Mono", monospace';
+          ctx.fillText('Vehículo en vía libre', car1X + 39, h * 0.56 - 12);
+        } else if (currentDemoMode === 'step1' || currentDemoMode === 'step3') {
+          const pedY = 105 + ((Math.sin(simTick * 1.1) + 1) * 0.5) * (h - 210);
+          const pedX = w * 0.5;
+
+          if (currentDemoMode === 'step3') {
+            const r1 = 45 + ((simTick * 40) % 110);
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.45)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(pedX, pedY, r1, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2.5;
+          ctx.strokeRect(pedX - 26, pedY - 36, 52, 72);
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.22)';
+          ctx.fillRect(pedX - 26, pedY - 36, 52, 72);
+
+          ctx.fillStyle = '#10b981';
+          ctx.fillRect(pedX - 78, pedY - 58, 156, 20);
+          ctx.fillStyle = '#04130e';
+          ctx.font = '700 11px "JetBrains Mono", monospace';
+          ctx.fillText('Peatón detectado', pedX, pedY - 44);
+
+          // Waiting car stopped before crosswalk
+          const stopCarX = zX - 150;
+          const stopCarY = h * 0.58;
+          ctx.fillStyle = '#64748b';
+          ctx.fillRect(stopCarX, stopCarY, 82, 42);
+          ctx.strokeStyle = '#94a3b8';
+          ctx.strokeRect(stopCarX - 4, stopCarY - 4, 90, 50);
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText('DETENIDO EN ROJO', stopCarX + 41, stopCarY - 10);
+        } else if (currentDemoMode === 'step2') {
+          const pedX = w * 0.5;
+          const pedY = h * 0.5;
+
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2.5;
+          ctx.strokeRect(pedX - 25, pedY - 35, 50, 70);
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+          ctx.fillRect(pedX - 25, pedY - 35, 50, 70);
+
+          const rushProgress = (simTick * 0.85) % 1;
+          const rushCarX = 40 + rushProgress * (zX - 95);
+          const rushCarY = h * 0.52;
+
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(rushCarX + 86, rushCarY + 20);
+          ctx.lineTo(pedX, pedY);
+          ctx.stroke();
+
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(rushCarX - 6, rushCarY - 6, 96, 52);
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.32)';
+          ctx.fillRect(rushCarX, rushCarY, 84, 40);
+
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(rushCarX - 58, rushCarY - 30, 200, 20);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '700 11px "JetBrains Mono", monospace';
+          ctx.fillText('¡CUASI-COLISIÓN! < 2s', rushCarX + 42, rushCarY - 16);
+        }
+
+        requestAnimationFrame(renderSim);
+      }
+
+      renderSim();
+    })();
+
+    /* ------------------------------------------------------------------------
+       6. ACTO IV: INTERACTIVE CARTAGENA HEATMAP & PDF MODAL
+       ------------------------------------------------------------------------ */
+    (function initCartagenaHeatmap() {
+      const canvas = document.getElementById('cartagenaHeatmapCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      const hotspots = [
+        { x: 300, y: 140, r: 56, label: 'Cruce UNICOLOMBO · Cuatro Vientos' },
+        { x: 175, y: 100, r: 42, label: 'Esquina Estudiantil Norte' },
+        { x: 435, y: 185, r: 46, label: 'Corredor Av. Pedro de Heredia' }
+      ];
+      let totalEvents = 14;
+
+      function drawHeatmap() {
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+
+        ctx.fillStyle = '#060c1a';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.14)';
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.moveTo(0, 140);
+        ctx.lineTo(w, 140);
+        ctx.moveTo(300, 0);
+        ctx.lineTo(300, h);
+        ctx.moveTo(110, 0);
+        ctx.lineTo(490, h);
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        hotspots.forEach(spot => {
+          const grad = ctx.createRadialGradient(spot.x, spot.y, 4, spot.x, spot.y, spot.r);
+          grad.addColorStop(0, 'rgba(239, 68, 68, 0.88)');
+          grad.addColorStop(0.45, 'rgba(245, 158, 11, 0.45)');
+          grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(spot.x, spot.y, spot.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '600 11px "JetBrains Mono", monospace';
+          ctx.fillText(spot.label, spot.x, spot.y - spot.r * 0.55);
+        });
+      }
+
+      canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+
+        hotspots.push({
+          x,
+          y,
+          r: 44,
+          label: `Riesgo #${totalEvents + 1} (${new Date().toLocaleTimeString()})`
+        });
+        totalEvents += 1;
+        document.getElementById('heatmapCountLabel').textContent = `${totalEvents} Situaciones de Riesgo Registradas`;
+        drawHeatmap();
+      });
+
+      drawHeatmap();
+    })();
+
+    function openPdfModal() {
+      document.getElementById('pdfModalBackdrop').classList.add('open');
+    }
+
+    function closePdfModal() {
+      document.getElementById('pdfModalBackdrop').classList.remove('open');
+    }
+
+    /* ------------------------------------------------------------------------
+       7. KEYBOARD SHORTCUTS FOR LIVE KEYNOTE SPEAKERS
+       ------------------------------------------------------------------------ */
+    window.addEventListener('keydown', (e) => {
+      if (e.target && ['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if (e.key === 'g' || e.key === 'G') {
+        toggleTeleprompter();
+      } else if (e.key === '1') {
+        showSpeakerScript(1);
+      } else if (e.key === '2') {
+        showSpeakerScript(2);
+      } else if (e.key === '3') {
+        showSpeakerScript(3);
+      } else if (e.key === '4') {
+        showSpeakerScript(4);
+      }
+    });
+
+    /* Try fetching dynamic network QR if backend is running */
+    fetch('/api/network-qr')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && data.qrDataUrl) {
+          const qrImg = document.getElementById('qrPresentationImg');
+          if (qrImg) qrImg.src = data.qrDataUrl;
+        }
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>

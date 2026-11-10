@@ -1,0 +1,89 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "zone": "Centro Histórico",
+        "population": 18200,
+        "elderly_pct": 13.2,
+        "children_pct": 21.1,
+        "ipm": 0.19,
+        "vulnerability_score": 0.48
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-75.5490, 10.4300],
+          [-75.5430, 10.4300],
+          [-75.5430, 10.4230],
+          [-75.5490, 10.4230],
+          [-75.5490, 10.4300]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "zone": "Pie de la Popa",
+        "population": 25500,
+        "elderly_pct": 10.1,
+        "children_pct": 24.8,
+        "ipm": 0.27,
+        "vulnerability_score": 0.62
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-75.5550, 10.4220],
+          [-75.5470, 10.4220],
+          [-75.5470, 10.4150],
+          [-75.5550, 10.4150],
+          [-75.5550, 10.4220]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "zone": "Manga",
+        "population": 33400,
+        "elderly_pct": 11.4,
+        "children_pct": 19.7,
+        "ipm": 0.14,
+        "vulnerability_score": 0.37
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-75.5415, 10.4195],
+          [-75.5355, 10.4195],
+          [-75.5355, 10.4130],
+          [-75.5415, 10.4130],
+          [-75.5415, 10.4195]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "zone": "Olaya Herrera",
+        "population": 47200,
+        "elderly_pct": 8.5,
+        "children_pct": 29.9,
+        "ipm": 0.36,
+        "vulnerability_score": 0.79
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-75.5305, 10.4310],
+          [-75.5215, 10.4310],
+          [-75.5215, 10.4235],
+          [-75.5305, 10.4235],
+          [-75.5305, 10.4310]
+        ]]
+      }
+    }
+  ]
+}
