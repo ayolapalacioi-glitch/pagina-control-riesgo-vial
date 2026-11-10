@@ -2,11 +2,50 @@
 
 **Sistema Inteligente de Protección Vial Activa (*Edge-to-Cloud*)** diseñado para mitigar la siniestralidad vial y proteger a los actores viales vulnerables en pasos peatonales críticos, alineado con el **Plan Nacional de Seguridad Vial 2022–2031**, el enfoque de **Sistema Seguro (ANSV)** y la estrategia global **Visión Cero**.
 
+> 🏆 **Documentación Oficial para Evento / Programa de Aceleración:**
+> Consulte el documento maestro completo adaptado a los 4 módulos de emprendimiento en:
+> - 📄 **Dossier Markdown Completo:** [`docs/DOSSIER_EVENTO_AI_SAFECROSSING.md`](docs/DOSSIER_EVENTO_AI_SAFECROSSING.md)
+> - ⚖️ **Marco Legal y Blindaje Jurídico:** [`docs/MARCO_LEGAL_Y_CUMPLIMIENTO_NORMATIVO.md`](docs/MARCO_LEGAL_Y_CUMPLIMIENTO_NORMATIVO.md)
+> - 📝 **Documento Word Editable Oficial:** [`DOSSIER_EVENTO_AI_SAFECROSSING.docx`](DOSSIER_EVENTO_AI_SAFECROSSING.docx)
+
+---
+
+## ⚖️ Conformidad Normativa y Blindaje Jurídico (100% Dentro de la Ley)
+
+AI-SafeCrossing opera en **estricto cumplimiento del marco legal colombiano e internacional**:
+
+| Eje Legal | Ley / Regulación Oficial | Garantía Técnica de Cumplimiento en el Proyecto |
+|---|---|---|
+| **Habeas Data & Privacidad** | **Ley Estatutaria 1581 de 2012**<br>Decreto 1377 de 2013 (SIC) | **Zero-Biometrics & Zero Raw-Storage:** Procesamiento efímero en memoria volátil RAM. Cero reconocimiento facial, cero lectura de placas (LPR) y descarte inmediato de fotogramas tras inferencia. |
+| **Código de Tránsito Terrestre** | **Ley 769 de 2002**<br>Arts. 57, 58, 63 y 74 | Protección activa de la prelación peatonal en cebra y advertencia para cumplimiento de los 30 km/h en zonas escolares. |
+| **Enfoque de "Sistema Seguro"** | **Ley 2251 de 2022**<br>*(Ley Julián Esteban)* | Adopción de la estrategia global Visión Cero: infraestructura predictiva que perdona el error humano y previene muertes. |
+| **Manual de Señalización Vial** | **Resolución 1885 de 2015**<br>Ministerio de Transporte | Clasificado como *Sistema Asistencial de Advertencia Luminosa*. Balizas ámbar a 50–60 destellos/min y tiempo de despeje a marcha de 0.8 m/s para adultos mayores. |
+| **No Invasión de Redes Públicas** | Ley 105 de 1993 y régimen DATT | **Desconexión física total del semáforo municipal:** SafeNode opera con alimentación y lógica propia; sincronización pasiva óptica por visión artificial sin tocar cables. |
+| **Espectro Electromagnético** | **Resolución 181 de 2019 de la ANE** | Uso libre de la banda ISM de 2.4 GHz para microcontroladores ESP32 con potencia PIRE < 100 mW (exento de licencias). |
+| **IA Ética y Transparente** | **CONPES 3975 de 2019**<br>Directrices UNESCO (2021) | Algoritmos cinemáticos explicables ($TTC$, $PET$) basados en física determinista y mitigación de sesgos algorítmicos. |
+| **Contratación Pública (B2G)** | Ley 80/93, Ley 1150/07 y Dec. 393/91 | Habilitado para contratación ágil vía **Mínima Cuantía** y **Convenios de Cooperación CTeI** con semilleros de investigación (UNICOLOMBO). |
+
+---
+
+## 🧭 Alineación con los 4 Módulos del Programa de Emprendimiento e Innovación
+
+| Módulo Oficial | Requerimientos Metodológicos Clave | Implementación en AI-SafeCrossing |
+|---|---|---|
+| **Módulo 1: Discovery** *(Design Thinking & HCD)* | • Lanzamiento del reto y acuerdos de equipo (Team Charter).<br>• Mapeo sistémico y análisis de causa raíz (Ishikawa, 5 Whys). | • Estructuración de roles Hacker, Hustler, Hipster, Ops con matriz RACI.<br>• Identificación del bucle de invisibilidad de near-misses; pregunta reto HMW. |
+| **Módulo 2: Business Modelling** | • Customer Discovery (Entrevistas e insights validados).<br>• Value Proposition Canvas (Jobs, Pains, Gains).<br>• Ideación estructurada y selección de conceptos.<br>• Business Model Canvas y jerarquización de supuestos (LOFA). | • 48 entrevistas (The Mom Test) con 3 arquetipos (Peatón, Conductor, DATT).<br>• Ajuste Problema-Solución con ahorro del 80% frente a radares.<br>• Matriz multicriterio 9.05/10 para arquitectura Edge-IoT + Web QR.<br>• BMC de 9 bloques con priorización de supuestos críticos de deseabilidad y red. |
+| **Módulo 3: Sustainability** *(Finance & Ethics)* | • Modelos de ingresos y Unit Economics.<br>• Modelo financiero a 12 meses y rutas de financiación.<br>• Ética empresarial, cumplimiento e innovación responsable. | • Venta de Hardware ($1,250 USD) + SaaS mensual ($90 USD/mes); LTV/CAC: 14.1x; Payback: 3.5 meses.<br>• Proyección de 25 cruces en 12 meses; Punto de Equilibrio en Mes 8.<br>• Privacidad por diseño (Edge AI, zero reconocimiento facial) y Ley 1581 / Ley 769. |
+| **Módulo 4: Validate & Pitch** *(Prototyping & Pitching)* | • Prototipado rápido (MVP papel, concierge, digital-físico).<br>• Diseño de experimentos (Test Cards & Learning Cards).<br>• Estructuración del Pitch de inversión en inglés y defensa. | • Prototipo TRL-6 operativo: YOLOv8 (5 ms) + ESP32 FSM + QR Geofence 50 m.<br>• 3 Test Cards y 3 Learning Cards con evidencia empírica en Cartagena.<br>• Pitch Deck de 10 diapositivas en inglés, guion verbal y guía de 5 preguntas difíciles Q&A. |
+
 ---
 
 ## 1. Descripción General
 
-**AI-SafeCrossing (S.I.P.V.A.)** articula visión por computadora de alta velocidad, modelado cinemático predictivo e infraestructura IoT semafórica para anticipar y prevenir conflictos peatonales-vehiculares en tiempo real. El procesamiento local en el borde garantiza tiempos de inferencia neuronal de **~5 ms**, transmisión fluida a **30.0 FPS** y una latencia integral de actuación inferior a **100 ms**.
+**AI-SafeCrossing (S.I.P.V.A.)** es una **estación autónoma no invasiva de señalización activa y salvaguarda peatonal** que articula visión por computadora en el borde (*Edge AI*), modelado cinemático predictivo e infraestructura IoT independiente de advertencia luminosa y acústica para anticipar y prevenir atropellos en tiempo real. 
+
+> 🛑 **Arquitectura No Invasiva y Desconexión Total del Semáforo Municipal:**  
+> AI-SafeCrossing **NO es un sistema de semaforización inteligente ni está conectado por cables, empalmes o circuitos al semáforo de la ciudad**. Funciona como un dispositivo autónomo e independiente (SafeNode) que puede **sincronizarse de forma pasiva con el ciclo semafórico existente mediante visión computacional óptica** (la cámara encuadra y detecta la luz del semáforo existente) o desplegarse con total autonomía en pasos de cebra donde **no existe semáforo alguno** (zonas escolares, barriales y hospitalarias).
+
+El procesamiento local en el borde garantiza tiempos de inferencia neuronal de **~5 ms**, transmisión fluida a **30.0 FPS** y una latencia integral de actuación inferior a **100 ms**.
 
 ### Capacidades Centrales de la Plataforma
 
@@ -14,7 +53,7 @@
 - **Inferencia Neuronal YOLOv8 y Calibración Dinámica (`BILLBOARD_MODE`)**: Arquitectura multihilo desacoplada (`ThreadedFrameGrabber` + `AsyncVisionWorker`) con modelo **Ultralytics YOLOv8 (`yolov8n.pt`)**, trazado de *hitboxes* en `0.05 ms` y detección automática del polígono cuadrilátero de cruce peatonal mediante visión clásica adaptativa.
 - **Seguimiento Motorizado PTZ (`Motion Tracking`)**: Control automático del servomecanismo de la cámara a través de **Tuya Cloud API (`tinytuya`)** para el seguimiento activo de peatones y vehículos en la zona de conflicto.
 - **Motor Cinemático Predictivo (`TTC`, `PET`, `vRel`)**: Seguimiento multiobjeto por **Distancia Euclidiana + IoU**, estimación de velocidad vectorial, predicción lineal de trayectoria de **1 a 5 segundos** y clasificación multicriterio de severidad en cuatro niveles: **`BAJO`**, **`MEDIO`**, **`ALTO`** y **`CRITICO`**.
-- **Controlador Semafórico Físico ESP32 y Gemelo Digital Web**: Máquina de Estados Finitos (FSM) con modo **FAIL-SAFE** para gobernar tres grupos semafóricos (**S1 Vehicular Ida**, **S2 Peatonal**, **S3 Vehicular Venida**) y pulsador peatonal físico con filtrado anti-rebote (`debounce`), supervisión por *heartbeat*, servidor web embebido y gemelo digital interactivo en el dashboard.
+- **Dispositivo Autónomo de Señalización Activa ESP32 y Gemelo Digital Web**: Máquina de Estados Finitos (FSM) con modo **FAIL-SAFE** para gobernar las balizas luminosas LED de advertencia vehicular, luces de cruce peatonal seguro y pulsador físico con filtrado anti-rebote (`debounce`), supervisión por *heartbeat*, servidor web embebido y gemelo digital interactivo en el dashboard.
 - **Centro de Mando Unificado y Cartografía Multicapa**: Interfaz operativa dividida en 7 módulos con mapas interactivos **Leaflet**, capas de vulnerabilidad demográfica por manzanas, siniestralidad histórica DATT Cartagena, mapas de calor (*heatmaps*) de eventos *near-miss* y gráficas **Chart.js** en tiempo real.
 - **Visor Ciudadano Móvil QR y Geocerca Sincronizada (50 m)**: Vinculación inmediata de teléfonos móviles mediante código QR y túneles HTTPS (**Cloudflare Tunnel / TLS local**), activando una cerca virtual georreferenciada de 50 metros sincronizada por `Socket.IO`.
 - **Auditoría y Reportería Institucional**: Persistencia automática de eventos de riesgo y exportación directa de evidencia técnica en formatos **PDF diario (`ReportLab`)** y **CSV**.
